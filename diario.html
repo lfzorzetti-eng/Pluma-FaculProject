@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Pluma - Seu diário emocional. Escreva seus pensamentos e reflexões.">
+    <meta name="theme-color" content="#73f59f">
+    
+    <title>Pluma - Diário Emocional</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/diario.css">
+    <link rel="stylesheet" href="css/ia.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <i class="fas fa-feather-alt"></i>
+                Pluma
+            </a>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container">
+        <!-- Lista de Entradas -->
+        <div id="diaryList">
+            <!-- Header do Diário -->
+            <div class="diary-header">
+                <h2>Meu Diário</h2>
+                <button class="btn btn-primary new-entry-btn" id="newEntryBtn">
+                    <i class="fas fa-plus"></i>
+                    Nova Entrada
+                </button>
+            </div>
+
+            <!-- Filtros -->
+            <div class="diary-filters">
+                <div class="search-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Buscar nas entradas...">
+                </div>
+                <button class="filter-btn" id="filterBtn" aria-label="Filtrar">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+
+            <!-- Entradas do Diário -->
+            <div class="diary-entries" id="diaryEntries">
+                <!-- Entradas serão inseridas via JavaScript -->
+            </div>
+
+            <!-- Estado Vazio -->
+            <div class="diary-empty" id="diaryEmpty" style="display: none;">
+                <i class="fas fa-book-open"></i>
+                <h3>Seu diário está vazio</h3>
+                <p>Comece a escrever seus pensamentos e sentimentos</p>
+                <button class="btn btn-primary" id="emptyNewEntryBtn">
+                    <i class="fas fa-pen"></i>
+                    Criar primeira entrada
+                </button>
+            </div>
+        </div>
+
+        <!-- Visualização de Entrada -->
+        <div class="entry-view" id="entryView">
+            <div class="entry-view-header">
+                <button class="back-btn" id="backBtn">
+                    <i class="fas fa-arrow-left"></i>
+                    Voltar
+                </button>
+                <div class="entry-actions">
+                    <button class="entry-action" id="editEntryBtn">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="entry-action delete" id="deleteEntryBtn">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="entry-view-content" id="entryViewContent">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Nova/Editar Entrada -->
+    <div class="modal-overlay" id="entryModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nova Entrada</h3>
+                <button class="modal-close" id="closeModal" aria-label="Fechar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="entryForm">
+                    <!-- Seletor de Emoção -->
+                    <div class="emotion-selector">
+                        <span class="emotion-selector-label">Como você está se sentindo?</span>
+                        <div class="emotion-options" id="emotionOptions">
+                            <div class="emotion-option" data-emotion="otimo" title="Ótimo">😄</div>
+                            <div class="emotion-option" data-emotion="bem" title="Bem">🙂</div>
+                            <div class="emotion-option" data-emotion="mais-ou-menos" title="Mais ou menos">😐</div>
+                            <div class="emotion-option" data-emotion="mal" title="Mal">😔</div>
+                            <div class="emotion-option" data-emotion="depressivo" title="Depressivo">😢</div>
+                            <div class="emotion-option" data-emotion="ansioso" title="Ansioso">😰</div>
+                        </div>
+                    </div>
+
+                    <!-- Título -->
+                    <div class="form-group">
+                        <label class="form-label" for="entryTitle">Título</label>
+                        <input 
+                            type="text" 
+                            class="form-input" 
+                            id="entryTitle" 
+                            placeholder="Dê um título para esta entrada..."
+                            maxlength="100"
+                            required
+                        >
+                    </div>
+
+<!-- Texto -->
+                    <div class="form-group">
+                        <label class="form-label" for="entryText">O que está na sua mente?</label>
+                        <textarea 
+                            class="form-textarea" 
+                            id="entryText" 
+                            placeholder="Escreva livremente seus pensamentos, sentimentos, reflexões..."
+                            rows="6"
+                            required
+                        ></textarea>
+                    </div>
+
+                    <!-- Opção: conversar com a IA sobre o dia -->
+                    <div class="toggle-wrapper ia-toggle">
+                        <label class="toggle-label" for="talkToAiToggle">
+                            <i class="fas fa-user-doctor"></i>
+                            <span class="ia-toggle-text">
+                                <strong>Conversar com a IA sobre o dia</strong>
+                                <small>Depois de salvar, o assistente lê esta entrada e conversa com você</small>
+                            </span>
+                        </label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="talkToAiToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="alert alert-info ai-toggle-info">
+                        <i class="fas fa-circle-info"></i>
+                        <div class="alert-content">
+                            <span class="alert-text">
+                                O assistente roda no seu computador através do Ollama.
+                                Se ele não estiver ligado, a entrada é salva normalmente.
+                            </span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancelEntry">Cancelar</button>
+                <button class="btn btn-primary" id="saveEntry">
+                    <i class="fas fa-save"></i>
+                    Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Conversa com a IA -->
+    <div class="modal-overlay" id="aiModal">
+        <div class="modal">
+            <div class="ai-modal-header">
+                <div class="ai-modal-info">
+                    <div class="ai-modal-title">
+                        <i class="fas fa-user-doctor"></i>
+                        <span>Assistente Pluma</span>
+                    </div>
+                    <div class="ai-modal-subtitle" id="aiModalSubtitle"></div>
+                </div>
+                <div class="ai-header-actions">
+                    <button class="ai-btn-ghost" id="aiHistoricoBtn" aria-label="Conversas salvas" title="Conversas salvas">
+                        <i class="fas fa-clock-rotate-left"></i>
+                    </button>
+                    <button class="ai-btn-ghost" id="aiLimparBtn" aria-label="Limpar conversa" title="Limpar conversa">
+                        <i class="fas fa-broom"></i>
+                    </button>
+                    <button class="ai-btn-ghost" id="aiConfigBtn" aria-label="Configurações" title="Configurações">
+                        <i class="fas fa-gear"></i>
+                    </button>
+                    <button class="ai-btn-ghost" id="aiCloseModal" aria-label="Fechar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="ai-crisis-alert" id="aiCrisisAlert">
+                <i class="fas fa-heart-pulse"></i>
+                <p>
+                    Seu bem-estar importa. Se estiver em crise, ligue para o
+                    <strong>CVV: 188</strong> (gratuito, 24h). Você não precisa passar por isso sozinho(a).
+                </p>
+            </div>
+
+            <div class="ai-messages" id="aiMessages"></div>
+
+            <div class="ai-typing" id="aiTyping">
+                <div class="ai-dots">
+                    <span class="ai-dot"></span>
+                    <span class="ai-dot"></span>
+                    <span class="ai-dot"></span>
+                </div>
+                <span>O assistente está escrevendo...</span>
+            </div>
+
+            <div class="ai-status" id="aiStatus"></div>
+
+            <!-- Histórico de conversas salvas -->
+            <div class="ai-historico-backdrop" id="aiHistoricoBackdrop"></div>
+            <aside class="ai-historico" id="aiHistorico" aria-label="Conversas salvas">
+                <div class="ai-historico-header">
+                    <div class="ai-historico-title">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        <span>Conversas salvas</span>
+                    </div>
+                    <button class="ai-btn-ghost" id="aiHistoricoFechar" aria-label="Fechar histórico">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="ai-historico-lista" id="aiHistoricoLista"></div>
+                <small class="ai-disclaimer ai-historico-aviso">
+                    <i class="fas fa-lock"></i>
+                    Cada conversa fica salva só no seu navegador. Toque em uma para continuar de onde parou.
+                </small>
+            </aside>
+
+            <form class="ai-config-panel" id="aiConfigPanel">
+                <div class="ai-config-title">
+                    <i class="fas fa-robot"></i>
+                    Conexão com o Ollama
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="aiConfigUrl">Endereço do Ollama</label>
+                    <input type="text" class="form-input" id="aiConfigUrl" placeholder="http://localhost:11434">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="aiConfigModel">Modelo</label>
+                    <input type="text" class="form-input" id="aiConfigModel" placeholder="llama3.2">
+                    <small style="color: var(--cinza-medio); font-size: 0.8rem;">
+                        Baixe com: <code>ollama pull llama3.2</code>
+                    </small>
+                </div>
+
+                <div class="ai-config-actions">
+                    <button type="button" class="btn btn-outline" id="aiCancelConfigBtn">Fechar</button>
+                    <button type="submit" class="btn btn-primary">Salvar e testar</button>
+                </div>
+            </form>
+
+            <form class="ai-input-area" id="aiForm">
+                <div class="ai-input-wrapper">
+                    <textarea id="aiInput" rows="1" placeholder="O que você quer falar sobre o seu dia?" maxlength="2000"></textarea>
+                    <button type="submit" class="ai-send-btn" id="aiSendBtn" aria-label="Enviar">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <small class="ai-disclaimer">
+                    <i class="fas fa-circle-info"></i>
+                    A Pluma é uma ferramenta de apoio emocional e não substitui acompanhamento profissional.
+                </small>
+            </form>
+        </div>
+    </div>
+
+    <!-- Navbar Inferior -->
+    <nav class="navbar" aria-label="Navegação principal">
+        <div class="navbar-content">
+            <a href="index.html" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Início</span>
+            </a>
+            <a href="humor.html" class="nav-item">
+                <i class="fas fa-smile"></i>
+                <span>Humor</span>
+            </a>
+            <a href="diario.html" class="nav-item active" aria-current="page">
+                <i class="fas fa-book"></i>
+                <span>Diário</span>
+            </a>
+            <a href="historico.html" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Histórico</span>
+            </a>
+            <a href="respirar.html" class="nav-item">
+                <i class="fas fa-wind"></i>
+                <span>Respirar</span>
+            </a>
+            <a href="config.html" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Config</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/ia.js"></script>
+    <script src="js/diario.js"></script>
+</body>
+</html>

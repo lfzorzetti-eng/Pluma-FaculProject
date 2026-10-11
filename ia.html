@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Pluma - Fale com o assistente de IA sobre como foi seu dia">
+    <title>Pluma - Assistente</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/ia.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Tela cheia de conversa -->
+    <div class="ai-page">
+
+        <header class="ai-modal-header">
+            <div class="ai-modal-info">
+                <div class="ai-modal-title">
+                    <i class="fas fa-user-doctor"></i>
+                    <span>Assistente Pluma</span>
+                </div>
+                <div class="ai-modal-subtitle" id="aiModalSubtitle">Como foi seu dia?</div>
+            </div>
+            <div class="ai-header-actions">
+                <button class="ai-btn-ghost" id="aiHistoricoBtn" aria-label="Conversas salvas" title="Conversas salvas">
+                    <i class="fas fa-clock-rotate-left"></i>
+                </button>
+                <button class="ai-btn-ghost" id="aiLimparBtn" aria-label="Limpar conversa" title="Limpar conversa">
+                    <i class="fas fa-broom"></i>
+                </button>
+                <button class="ai-btn-ghost" id="aiConfigBtn" aria-label="Configurações" title="Configurações">
+                    <i class="fas fa-gear"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Aviso de emergência (aparece se detectar risco) -->
+        <div class="ai-crisis-alert" id="aiCrisisAlert">
+            <i class="fas fa-heart-pulse"></i>
+            <p>
+                Seu bem-estar importa. Se estiver em crise, ligue para o
+                <strong>CVV: 188</strong> (gratuito, 24h). Você não precisa passar por isso sozinho(a).
+            </p>
+        </div>
+
+        <!-- Mensagens -->
+        <main class="ai-messages" id="aiMessages">
+            <div class="ai-welcome">
+                <i class="fas fa-feather-alt"></i>
+                <p>Conte como foi seu dia. O assistente lê sua entrada do diário e conversa com você sobre ela.</p>
+            </div>
+        </main>
+
+        <!-- Indicador de digitação -->
+        <div class="ai-typing" id="aiTyping">
+            <div class="ai-dots">
+                <span class="ai-dot"></span>
+                <span class="ai-dot"></span>
+                <span class="ai-dot"></span>
+            </div>
+            <span>O assistente está escrevendo...</span>
+        </div>
+
+        <div class="ai-status" id="aiStatus"></div>
+
+        <!-- Histórico de conversas salvas -->
+        <div class="ai-historico-backdrop" id="aiHistoricoBackdrop"></div>
+        <aside class="ai-historico" id="aiHistorico" aria-label="Conversas salvas">
+            <div class="ai-historico-header">
+                <div class="ai-historico-title">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    <span>Conversas salvas</span>
+                </div>
+                <button class="ai-btn-ghost" id="aiHistoricoFechar" aria-label="Fechar histórico">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="ai-historico-lista" id="aiHistoricoLista"></div>
+            <small class="ai-disclaimer ai-historico-aviso">
+                <i class="fas fa-lock"></i>
+                Cada conversa fica salva só no seu navegador. Toque em uma para continuar de onde parou.
+            </small>
+        </aside>
+
+        <!-- Configurações do Ollama -->
+        <form class="ai-config-panel" id="aiConfigPanel">
+            <div class="ai-config-title">
+                <i class="fas fa-robot"></i>
+                Conexão com o Ollama
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="aiConfigUrl">Endereço do Ollama</label>
+                <input type="text" class="form-input" id="aiConfigUrl"
+                       placeholder="http://localhost:11434">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="aiConfigModel">Modelo</label>
+                <input type="text" class="form-input" id="aiConfigModel"
+                       placeholder="llama3.2">
+                <small style="color: var(--cinza-medio); font-size: 0.8rem;">
+                    Baixe com: <code>ollama pull llama3.2</code>
+                </small>
+            </div>
+
+            <div class="ai-config-actions">
+                <button type="button" class="btn btn-outline" id="aiCancelConfigBtn">Fechar</button>
+                <button type="submit" class="btn btn-primary">Salvar e testar</button>
+            </div>
+        </form>
+
+        <!-- Campo de envio -->
+        <form class="ai-input-area" id="aiForm">
+            <div class="ai-input-wrapper">
+                <textarea id="aiInput" rows="1"
+                    placeholder="O que você quer falar sobre o seu dia?"
+                    maxlength="2000"></textarea>
+                <button type="submit" class="ai-send-btn" id="aiSendBtn" aria-label="Enviar">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/ia.js"></script>
+</body>
+</html>
