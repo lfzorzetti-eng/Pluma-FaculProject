@@ -145,30 +145,6 @@
                         ></textarea>
                     </div>
 
-                    <!-- Opção: conversar com a IA sobre o dia -->
-                    <div class="toggle-wrapper ia-toggle">
-                        <label class="toggle-label" for="talkToAiToggle">
-                            <i class="fas fa-user-doctor"></i>
-                            <span class="ia-toggle-text">
-                                <strong>Conversar com a IA sobre o dia</strong>
-                                <small>Depois de salvar, o assistente lê esta entrada e conversa com você</small>
-                            </span>
-                        </label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="talkToAiToggle">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="alert alert-info ai-toggle-info">
-                        <i class="fas fa-circle-info"></i>
-                        <div class="alert-content">
-                            <span class="alert-text">
-                                O assistente roda no seu computador através do Ollama.
-                                Se ele não estiver ligado, a entrada é salva normalmente.
-                            </span>
-                        </div>
-                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -193,11 +169,14 @@
                     <div class="ai-modal-subtitle" id="aiModalSubtitle"></div>
                 </div>
                 <div class="ai-header-actions">
+                    <button class="ai-btn-ghost" id="aiNovoBtn" aria-label="Nova conversa" title="Nova conversa">
+                        <i class="fas fa-plus"></i>
+                    </button>
                     <button class="ai-btn-ghost" id="aiHistoricoBtn" aria-label="Conversas salvas" title="Conversas salvas">
                         <i class="fas fa-clock-rotate-left"></i>
                     </button>
-                    <button class="ai-btn-ghost" id="aiLimparBtn" aria-label="Limpar conversa" title="Limpar conversa">
-                        <i class="fas fa-broom"></i>
+                    <button class="ai-btn-ghost" id="aiLimparBtn" aria-label="Excluir conversa" title="Excluir conversa">
+                        <i class="fas fa-trash"></i>
                     </button>
                     <button class="ai-btn-ghost" id="aiConfigBtn" aria-label="Configurações" title="Configurações">
                         <i class="fas fa-gear"></i>
@@ -287,6 +266,12 @@
             </form>
         </div>
     </div>
+
+    <!-- Botão flutuante: conversar com a IA sem precisar criar um diário -->
+    <button class="ai-fab" id="aiFab" aria-label="Conversar com a IA">
+        <i class="fas fa-user-doctor"></i>
+        <span class="ai-fab-label">Conversar com a IA</span>
+    </button>
 
     <!-- Navbar Inferior -->
     <nav class="navbar" aria-label="Navegação principal">

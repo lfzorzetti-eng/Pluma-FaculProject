@@ -6,6 +6,16 @@
 const IA_CONFIG_KEY = 'pluma_ia_config';
 const IA_CHATS_KEY = 'pluma_ia_chats';
 
+// Conversas livres (sem diário) usam ids com este prefixo, para caberem várias
+const IA_FREE_CHAT_PREFIX = 'livre-';
+
+// Id legado da primeira versão do chat livre (continua sendo reconhecido)
+const IA_FREE_CHAT_LEGACY_ID = 'livre';
+
+function gerarIdLivre() {
+    return IA_FREE_CHAT_PREFIX + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
 const IA_DEFAULT_CONFIG = {
     url: 'http://localhost:11434',
     model: 'llama3.2',
@@ -25,10 +35,39 @@ Estou aqui para te ouvir enquanto isso. Quer me contar o que aconteceu?`;
 // PROMPT DO PSICÓLOGO
 // ============================================
 
-const IA_SYSTEM_PROMPT = `Você é a Pluma, uma assistente de apoio emocional que atua como uma psicóloga acolhedora, dentro de um aplicativo de diário emocional. Você conversa em português do Brasil, com tom humano, caloroso e respeitoso.
+const IA_CONTEXTO_DIARIO = `A pessoa acabou de escrever uma entrada no diário contando como foi o dia dela. Essa entrada é o ponto de partida da conversa: use o que ela escreveu como material para explorá-lo com ela, ajudando a pessoa a entender o que sentiu, dar sentido ao que viveu e encontrar caminhos práticos de cuidado.`;
+
+const IA_CONTEXTO_LIVRE = `A pessoa abriu o assistente para conversar livremente, sem uma entrada específica como ponto de partida. Você já acompanha o diário dela (veja as lembranças abaixo, quando existirem) e pode usá-las para personalizar a conversa e mostrar continuidade, sem esperar que ela repita o que já escreveu. Acolha o que ela trouxer e conduza a conversa com o mesmo cuidado, fazendo uma pergunta aberta de cada vez.`;
+
+function montarSystemPrompt(livre = false, contextoDiario = null, contextoHumor = null) {
+    return `Você é a Pluma, uma assistente de apoio emocional que atua como uma psicóloga acolhedora, dentro de um aplicativo de diário emocional. Você conversa em português do Brasil, com tom humano, caloroso e respeitoso.
 
 ## CONTEXTO
-A pessoa acabou de escrever uma entrada no diário contando como foi o dia dela. Essa entrada é o ponto de partida da conversa: use o que ela escreveu como material para explorá-lo com ela, ajudando a pessoa a entender o que sentiu, dar sentido ao que viveu e encontrar caminhos práticos de cuidado.
+${livre ? IA_CONTEXTO_LIVRE : IA_CONTEXTO_DIARIO}
+
+${contextoDiario
+    ? `## O QUE VOCÊ JÁ SABE SOBRE ESTA PESSOA (diário)
+Você tem acesso ao diário dela. Este é um resumo real das entradas, da mais recente para a mais antiga — trate como memória sua sobre quem ela é:
+
+${contextoDiario}
+
+Use essas lembranças para reconhecer padrões, retomar assuntos e mostrar que você acompanha a vida dela. Traga à tona só o que for relevante para o momento, com naturalidade, sem dizer que "leu um arquivo" e sem despejar tudo de uma vez. Nunca invente fatos: trabalhe apenas com o que está aqui.
+`
+    : `## SOBRE ESTA PESSOA
+Ainda não há entradas no diário dela. Converse naturalmente, sem fingir conhecê-la. Se fizer sentido, convide-a a escrever no diário depois.
+`
+}
+
+${contextoHumor
+    ? `## REGISTROS DE HUMOR (acompanhamento emocional)
+Também há registros de humor, com a emoção sentida e a nota que a pessoa escreveu:
+
+${contextoHumor}
+
+Use isso para reconhecer como ela vem se sentindo ao longo do tempo, sem forçar comparações. Só mencione quando fizer sentido para a conversa.
+`
+    : ``
+}
 
 ## COMO RESPONDER
 1. Comece sempre pela escuta. Acolha e valide o que a pessoa viveu antes de qualquer reflexão ou sugestão. O primeiro parágrafo deve fazer a pessoa se sentir ouvida.
@@ -40,7 +79,7 @@ A pessoa acabou de escrever uma entrada no diário contando como foi o dia dela.
 ## ESTILO
 - Escreva sempre em português do Brasil.
 - Use "você", linguagem simples, acolhedora e direta.
-- Respostas curtas: 2 a 5 parágrafos curtos. Nada de textos longos.
+- Respostas curtas: 2 a 4 parágrafos curtos. Nada de textos longos.
 - Evite jargão psicológico e listas com marcadores. Se um termo técnico ajudar, explique com simplicidade.
 - Nunca julgue, nunca minimize ("é só fase", "não é nada demais"), nunca compare a pessoa com os outros.
 - Se a pessoa estiver bem, celebre e aproveite para investigar o que sustentou esse dia bom, porque isso também é informação clínica.
@@ -49,11 +88,12 @@ A pessoa acabou de escrever uma entrada no diário contando como foi o dia dela.
 - Você não faz diagnóstico, não prescreve medicamentos e não substitui terapia.
 - Se o sofrimento for intenso, persistente ou estiver atrapalhando a rotina da pessoa, incentive com cuidado a procurar um psicólogo ou psiquiatra, e ofereça caminhos para isso.
 - Se a pessoa perguntar se você é um robô, seja honesta: você é uma assistente digital, não um profissional.
-- Não invente fatos sobre a vida da pessoa e não finja lembrar de sessões anteriores.
+- Não invente fatos sobre a vida da pessoa: use como base apenas o que ela escreveu no diário e o que contou nesta conversa. Não afirme lembrar de coisas que não estão aí.
 - Se a pessoa pedir algo fora do escopo de apoio emocional, recuse com gentileza e redirecione para a conversa sobre o dia dela.
 
 ## EMERGÊNCIA
 Se a pessoa falar em se machucar, não querer viver, se matar, acabar com tudo ou desaparecer, pare as reflexões. Diga com clareza e sem rodeios que a vida importa, incentive o contato imediato com o CVV no número 188 (24h, gratuito) e peça que procure uma pessoa de confiança agora. Continue por ali, em vez de seguir com a análise.`;
+}
 
 // ============================================
 // CONFIGURAÇÃO
@@ -107,6 +147,30 @@ const IaChats = {
         return this.all()[entryId] || null;
     },
 
+    // Uma conversa livre não está ligada a nenhuma entrada do diário
+    isLivre(entryId) {
+        const id = String(entryId ?? '');
+        return id === IA_FREE_CHAT_LEGACY_ID || id.startsWith(IA_FREE_CHAT_PREFIX);
+    },
+
+    // Remove conversas livres vazias (abrir o chat não deve acumular lixo no storage)
+    prune() {
+        const chats = this.all();
+        let mudou = false;
+
+        Object.keys(chats).forEach(id => {
+            if (!this.isLivre(id)) return;
+            const mensagens = (chats[id] && chats[id].messages) || [];
+            const temConversa = mensagens.some(m => m.role === 'user' && !m.isContext);
+            if (!temConversa) {
+                delete chats[id];
+                mudou = true;
+            }
+        });
+
+        if (mudou) saveToStorage(IA_CHATS_KEY, chats);
+    },
+
     create(entry) {
         const chats = this.all();
         const now = new Date().toISOString();
@@ -121,6 +185,30 @@ const IaChats = {
             messages: []
         };
         chats[entry.id] = chat;
+        saveToStorage(IA_CHATS_KEY, chats);
+        return chat;
+    },
+
+    // Cria (ou recupera) uma conversa livre. Sem id, gera um novo.
+    ensureLivre(entryId) {
+        const id = entryId ? String(entryId) : gerarIdLivre();
+        const existente = this.get(id);
+        if (existente) return existente;
+
+        const chats = this.all();
+        const now = new Date().toISOString();
+        const chat = {
+            entryId: id,
+            livre: true,
+            title: 'Conversa livre',
+            emotion: null,
+            entryText: '',
+            entryCreatedAt: null,
+            createdAt: now,
+            updatedAt: now,
+            messages: []
+        };
+        chats[id] = chat;
         saveToStorage(IA_CHATS_KEY, chats);
         return chat;
     },
@@ -158,13 +246,15 @@ const IaChats = {
             .filter(chat => chat && Array.isArray(chat.messages)
                 && chat.messages.some(m => m.role === 'user' && !m.isContext))
             .map(chat => {
-                const entry = entries.find(e => e.id === chat.entryId) || null;
+                const livre = this.isLivre(chat.entryId) || Boolean(chat.livre);
+                const entry = livre ? null : (entries.find(e => e.id === chat.entryId) || null);
                 const faladas = chat.messages.filter(m => m.role === 'user' && !m.isContext);
                 const ultima = faladas[faladas.length - 1];
 
                 return {
                     entryId: chat.entryId,
-                    title: chat.title || 'Conversa sem título',
+                    livre,
+                    title: chat.title || (livre ? 'Conversa livre' : 'Conversa sem título'),
                     emotion: chat.emotion || null,
                     entryText: chat.entryText || '',
                     entryCreatedAt: chat.entryCreatedAt || chat.createdAt,
@@ -172,7 +262,7 @@ const IaChats = {
                     updatedAt: chat.updatedAt,
                     messages: chat.messages,
                     entry,
-                    orfa: !entry,
+                    orfa: !entry && !livre,
                     totalMensagens: faladas.length,
                     preview: ultima ? ultima.content : (chat.entryText || '')
                 };
@@ -184,8 +274,11 @@ const IaChats = {
                 const criacao = new Date(b.createdAt) - new Date(a.createdAt);
                 if (criacao !== 0) return criacao;
 
-                // conversa.begin e fim no mesmo instante: mantém a ordem estável
-                return Number(b.entryId) - Number(a.entryId);
+                // mesmo instante: mantém a ordem estável (ids numéricos ou "livre")
+                const numA = Number(a.entryId);
+                const numB = Number(b.entryId);
+                if (Number.isFinite(numA) && Number.isFinite(numB)) return numB - numA;
+                return String(b.entryId).localeCompare(String(a.entryId));
             });
     },
 
@@ -202,6 +295,16 @@ const IaChats = {
 
         chats[entryId].messages.push(message);
         chats[entryId].updatedAt = message.createdAt;
+
+        // Conversas livres ganham um título automático a partir da primeira mensagem
+        if (role === 'user' && !extra.isContext && this.isLivre(entryId)
+            && (!chats[entryId].title || chats[entryId].title === 'Conversa livre')) {
+            const limpo = String(content).replace(/\s+/g, ' ').trim();
+            if (limpo) {
+                chats[entryId].title = limpo.length > 48 ? `${limpo.slice(0, 48).trim()}…` : limpo;
+            }
+        }
+
         saveToStorage(IA_CHATS_KEY, chats);
         return message;
     },
@@ -223,18 +326,22 @@ const IaChats = {
 
     // Histórico que vai para o modelo, já com o prompt de sistema e o contexto do diário
     buildMessages(entryId) {
+        const livre = this.isLivre(entryId);
+        const sistema = { role: 'system', content: montarSystemPrompt(livre, montarContextoDiario(), montarContextoHumor()) };
         const chat = this.get(entryId);
-        if (!chat) return [{ role: 'system', content: IA_SYSTEM_PROMPT }];
+        if (!chat) return [sistema];
 
         const history = chat.messages
             .filter(m => (m.role === 'user' || m.role === 'assistant') && !m.isContext)
             .slice(-IA_MAX_CONTEXT_MESSAGES)
             .map(m => ({ role: m.role, content: m.content }));
 
-        const contexto = montarMensagemContexto(chat);
+        // Na conversa livre não existe entrada do diário para servir de contexto
+        if (livre) return [sistema, ...history];
+
         return [
-            { role: 'system', content: IA_SYSTEM_PROMPT },
-            { role: 'user', content: contexto },
+            sistema,
+            { role: 'user', content: montarMensagemContexto(chat) },
             ...history
         ];
     }
@@ -252,6 +359,68 @@ function montarMensagemContexto(chat) {
         '',
         chat.entryText
     ].filter(linha => linha !== null).join('\n');
+}
+
+// Resumo das últimas entradas do diário para a IA conhecer a pessoa
+function montarContextoDiario(limite = 12, maxChars = 240) {
+    if (typeof Pluma === 'undefined' || typeof Pluma.getDiaryEntries !== 'function') return null;
+
+    const entradas = Pluma.getDiaryEntries();
+    if (!Array.isArray(entradas) || entradas.length === 0) return null;
+
+    const linhas = entradas.slice(0, limite).map(e => {
+        const emocao = e.emotion ? Pluma.getEmotionData(e.emotion) : null;
+        const data = e.createdAt ? Pluma.formatDate(e.createdAt, 'medium') : 'data desconhecida';
+        const texto = String(e.text || '').replace(/\s+/g, ' ').trim();
+        if (!texto) return null;
+
+        const corpo = texto.length > maxChars ? `${texto.slice(0, maxChars).trim()}…` : texto;
+        const emocaoTxt = emocao ? ` • humor: ${emocao.label}` : '';
+        return `- [${data}] ${e.title}${emocaoTxt}: ${corpo}`;
+    }).filter(Boolean);
+
+    if (linhas.length === 0) return null;
+
+    const total = entradas.length;
+    const ultima = entradas[0].createdAt ? Pluma.formatDate(entradas[0].createdAt, 'medium') : null;
+    const cabecalho = `Total de entradas: ${total}${ultima ? ` (última em ${ultima})` : ''}.`;
+    const aviso = total > linhas.length
+        ? `Mostrando as ${linhas.length} mais recentes:`
+        : 'Entradas:';
+
+    return [cabecalho, aviso, ...linhas].join('\n');
+}
+
+// Resumo dos registros de humor para a IA conhecer o que a pessoa sentiu
+function montarContextoHumor(limite = 15, maxChars = 200) {
+    if (typeof Pluma === 'undefined' || typeof Pluma.getMoods !== 'function') return null;
+
+    const moods = Pluma.getMoods();
+    if (!Array.isArray(moods) || moods.length === 0) return null;
+
+    const ordenados = moods.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const linhas = ordenados.slice(0, limite).map(m => {
+        const emocao = m.emotion ? Pluma.getEmotionData(m.emotion) : null;
+        const data = m.createdAt ? Pluma.formatDate(m.createdAt, 'medium') : 'data desconhecida';
+        const nota = String(m.note || '').replace(/\s+/g, ' ').trim();
+        const atividades = Array.isArray(m.activities) && m.activities.length > 0
+            ? ` • atividades: ${m.activities.join(', ')}`
+            : '';
+        const corpo = nota.length > maxChars ? `${nota.slice(0, maxChars).trim()}…` : nota;
+        if (!nota && atividades === '') return null;
+        return `- [${data}] ${emocao ? emocao.label : m.emotion}${atividades}: ${corpo || '(sem nota)'}`;
+    }).filter(Boolean);
+
+    if (linhas.length === 0) return null;
+
+    const total = moods.length;
+    const ultima = moods[moods.length - 1]?.createdAt ? Pluma.formatDate(moods[moods.length - 1].createdAt, 'medium') : null;
+    const cabecalho = `Registros de humor: ${total}${ultima ? ` (mais recente encontrado no contexto: ${ultima})` : ''}.`;
+    const aviso = total > linhas.length
+        ? `Mostrando os ${linhas.length} mais recentes:`
+        : 'Registros:';
+
+    return [cabecalho, aviso, ...linhas].join('\n');
 }
 
 // ============================================
@@ -381,6 +550,8 @@ const IaChat = {
         });
 
         document.getElementById('aiCloseModal')?.addEventListener('click', () => this.close());
+        document.getElementById('aiVoltarBtn')?.addEventListener('click', () => this.voltar());
+        document.getElementById('aiNovoBtn')?.addEventListener('click', () => this.abrirChatLivre());
         document.getElementById('aiLimparBtn').addEventListener('click', () => this.limparConversa());
         document.getElementById('aiConfigBtn').addEventListener('click', () => this.toggleConfigPanel());
         document.getElementById('aiHistoricoBtn')?.addEventListener('click', () => this.toggleHistorico());
@@ -454,11 +625,11 @@ const IaChat = {
     },
 
     async abrirConversa(entryId, { silencioso = false } = {}) {
-        const id = Number(entryId);
-        const entrada = Pluma.getDiaryEntries().find(e => e.id === id);
-        const chatExistente = IaChats.get(id);
+        const livre = IaChats.isLivre(entryId);
+        const id = livre ? String(entryId) : Number(entryId);
+        const entrada = livre ? null : Pluma.getDiaryEntries().find(e => e.id === id);
 
-        if (!entrada && !chatExistente) {
+        if (!livre && !entrada && !IaChats.get(id)) {
             if (silencioso) this.renderSemEntrada();
             else alert('Não foi possível encontrar esta conversa.');
             return;
@@ -468,7 +639,9 @@ const IaChat = {
         this.entryId = id;
 
         // A entrada pode ter sido editada depois da conversa: refresca o contexto
-        if (entrada && chatExistente) IaChats.sync(id, entrada);
+        if (!livre && entrada && IaChats.get(id)) IaChats.sync(id, entrada);
+        // Abrir a conversa livre já garante o registro salvo (sem criar sessão ainda)
+        if (livre && !IaChats.get(id)) IaChats.ensureLivre(id);
 
         const chat = IaChats.get(id);
         this.atualizarSubtitulo(entrada, chat);
@@ -493,9 +666,20 @@ const IaChat = {
         return this.abrirConversa(entryId);
     },
 
+    // Abre uma nova conversa com a IA, sem depender de nenhuma entrada do diário
+    abrirChatLivre() {
+        return this.abrirConversa(gerarIdLivre());
+    },
+
     atualizarSubtitulo(entrada, chat) {
         const subtitle = document.getElementById('aiModalSubtitle');
         if (!subtitle) return;
+
+        if (IaChats.isLivre(this.entryId)) {
+            const titulo = chat && chat.title && chat.title !== 'Conversa livre' ? chat.title : null;
+            subtitle.textContent = titulo ? `Conversa livre • ${titulo}` : 'Conversa livre • sem diário';
+            return;
+        }
 
         if (entrada) {
             subtitle.textContent = `${Pluma.formatDateTime(entrada.createdAt)} • ${entrada.title}`;
@@ -513,13 +697,35 @@ const IaChat = {
         this.setTyping(false);
     },
 
+    // Sai da conversa em tela cheia voltando para a página anterior
+    voltar() {
+        this.fecharHistorico();
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = 'diario.html';
+        }
+    },
+
     async iniciarConversa() {
+        const livre = IaChats.isLivre(this.entryId);
         let chat = IaChats.get(this.entryId);
 
         if (!chat) {
-            const entry = Pluma.getDiaryEntries().find(e => e.id === this.entryId);
-            if (!entry) return;
-            chat = IaChats.create(entry);
+            if (livre) {
+                chat = IaChats.ensureLivre(this.entryId);
+            } else {
+                const entry = Pluma.getDiaryEntries().find(e => e.id === this.entryId);
+                if (!entry) return;
+                chat = IaChats.create(entry);
+            }
+        }
+
+        // A conversa livre não tem entrada do diário: a pessoa começa escrevendo
+        if (livre) {
+            this.render();
+            this.setStatus('');
+            return;
         }
 
         IaChats.addMessage(this.entryId, 'user', montarMensagemContexto(chat), { isContext: true });
@@ -625,8 +831,11 @@ const IaChat = {
         lista.innerHTML = '';
 
         if (!chat || chat.messages.length === 0) {
+            const livre = IaChats.isLivre(this.entryId);
             lista.appendChild(this.criarBemVindo(
-                'Suas mensagens e as respostas ficam salvas no seu dispositivo.'
+                livre
+                    ? 'Converse com a Pluma sobre o que quiser. Ela já conhece o que você escreveu no seu diário — é só começar.'
+                    : 'Suas mensagens e as respostas ficam salvas no seu dispositivo.'
             ));
             return;
         }
@@ -678,16 +887,34 @@ const IaChat = {
     },
 
     limparConversa() {
+        const livre = IaChats.isLivre(this.entryId);
+
         if (!IaChats.hasContent(this.entryId)) {
             alert('Esta conversa ainda não tem nada salvo.');
             return;
         }
 
-        if (!confirm('Apagar toda a conversa com a IA sobre este dia?')) return;
+        const pergunta = livre
+            ? 'Excluir esta conversa de vez? As mensagens não poderão ser recuperadas.'
+            : 'Excluir de vez a conversa com a IA sobre este dia? As mensagens não poderão ser recuperadas.';
+        if (!confirm(pergunta)) return;
 
-        IaChats.clear(this.entryId);
-        this.render();
-        this.iniciarConversa();
+        IaChats.remove(this.entryId);
+        this.entryId = null;
+        this.fecharHistorico();
+
+        // Em vez de fechar o chat, pula para outra conversa (ou abre uma nova)
+        const restantes = IaChats.list();
+        if (restantes.length > 0) {
+            this.abrirConversa(restantes[0].entryId);
+        } else {
+            this.abrirChatLivre();
+        }
+
+        // Atualiza o badge "já conversou" dos cards do diário
+        if (typeof loadEntries === 'function' && document.getElementById('diaryEntries')) {
+            loadEntries();
+        }
     },
 
     // ============================================
@@ -731,7 +958,7 @@ const IaChat = {
 
         if (conversas.length === 0) {
             lista.appendChild(this.criarBemVindo(
-                'Nenhuma conversa salva ainda. Toque em "Falar com a IA" em uma entrada do diário para começar.'
+                'Nenhuma conversa salva ainda. Toque em "Conversar com a IA" para começar.'
             ));
             return;
         }
@@ -769,6 +996,7 @@ const IaChat = {
 
         const quando = document.createElement('span');
         quando.textContent = `${Pluma.formatDateTime(conversa.entryCreatedAt)}`
+            + (conversa.livre ? ' • sem diário' : '')
             + (conversa.orfa ? ' • entrada removida' : '');
 
         const total = document.createElement('span');
@@ -882,19 +1110,26 @@ function erroConexao(e) {
 // INICIALIZAÇÃO
 // ============================================
 
-// Se aberto direto pela URL (ia.html?id=123), entra na conversa da entrada
-const IA_ENTRY_ID_PARAM = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
+// Se aberto direto pela URL (ia.html?id=123 ou ia.html?id=livre), entra na conversa
+const IA_ENTRY_ID_RAW = new URLSearchParams(window.location.search).get('id');
+const IA_ENTRY_ID_PARAM = parseInt(IA_ENTRY_ID_RAW, 10);
 
 document.addEventListener('DOMContentLoaded', function() {
     // Páginas que só reaproveitam o histórico da IA (ex.: historico.html) não
     // têm a interface do chat: só o armazenamento é usado lá.
     if (!document.getElementById('aiForm')) return;
 
+    IaChats.prune();
     IaChat.init();
 
     // No diário o chat vive dentro de um modal: espera a pessoa abrir,
     // senão o estado vazio desabilitaria o campo para o resto da sessão
     if (document.getElementById('aiModal')) return;
+
+    if (IA_ENTRY_ID_RAW && IaChats.isLivre(IA_ENTRY_ID_RAW)) {
+        IaChat.abrirConversa(IA_ENTRY_ID_RAW, { silencioso: true });
+        return;
+    }
 
     if (Number.isFinite(IA_ENTRY_ID_PARAM)) {
         IaChat.abrirConversa(IA_ENTRY_ID_PARAM, { silencioso: true });

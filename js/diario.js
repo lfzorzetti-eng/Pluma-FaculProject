@@ -237,9 +237,6 @@ function clearForm() {
     document.getElementById('entryTitle').value = '';
     document.getElementById('entryText').value = '';
     selectedEntryEmotion = null;
-
-    const talkToAi = document.getElementById('talkToAiToggle');
-    if (talkToAi) talkToAi.checked = false;
     
     document.querySelectorAll('.emotion-option').forEach(opt => {
         opt.classList.remove('selected');
@@ -290,21 +287,11 @@ function saveEntry() {
     }
     
     if (success) {
-        const entries = Pluma.getDiaryEntries();
-        const entrySalva = entries[0]; // salva no topo (unshift)
-        const idSalvo = isEditing && currentEntryId ? currentEntryId : (entrySalva && entrySalva.id);
-
         closeModal();
         loadEntries();
-        
+
         if (document.getElementById('entryView').classList.contains('visible')) {
             closeEntryView();
-        }
-
-        const talkToAi = document.getElementById('talkToAiToggle');
-        if (talkToAi && talkToAi.checked && idSalvo && typeof IaChat !== 'undefined' && IaChat.abrirParaEntrada) {
-            IaChat.abrirParaEntrada(idSalvo);
-            talkToAi.checked = false;
         }
     } else {
         alert('Erro ao salvar. Tente novamente.');
@@ -439,4 +426,13 @@ function setupButtons() {
     document.getElementById('filterBtn').addEventListener('click', () => {
         alert('Filtros avançados em desenvolvimento!');
     });
+
+    // Botão flutuante: abrir um chat com a IA sem precisar de um diário
+    const aiFab = document.getElementById('aiFab');
+    if (aiFab) {
+        aiFab.addEventListener('click', () => {
+            if (typeof IaChat === 'undefined' || typeof IaChat.abrirChatLivre !== 'function') return;
+            IaChat.abrirChatLivre();
+        });
+    }
 }

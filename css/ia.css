@@ -15,44 +15,53 @@
     min-height: 0;
 }
 
-/* Toggle "Conversar com a IA" dentro do modal do diário */
-.ia-toggle {
-    align-items: center;
-    border: 2px dashed var(--lilas-claro);
-    background: linear-gradient(135deg, rgba(115, 245, 159, 0.12), rgba(243, 215, 255, 0.18));
-}
-
-.ia-toggle .toggle-label {
-    cursor: pointer;
-    align-items: center;
-}
-
-.ia-toggle .toggle-label i {
-    background: var(--lilas-claro);
-    color: var(--texto-escuro);
-    flex-shrink: 0;
-}
-
-.ia-toggle-text {
+/* Botão flutuante: conversar com a IA sem precisar de um diário */
+.ai-fab {
+    position: fixed;
+    right: var(--espacamento-lg);
+    bottom: 5.5rem;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    line-height: 1.4;
-}
-
-.ia-toggle-text strong {
-    font-size: 0.95rem;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    padding: var(--espacamento-sm) var(--espacamento-lg);
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--verde-claro), var(--verde-escuro));
+    color: #0f7a37;
+    font-family: var(--font-principal);
     font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(75, 199, 122, 0.35);
+    z-index: 1100;
+    transition: transform var(--transicao-rapida), box-shadow var(--transicao-rapida);
 }
 
-.ia-toggle-text small {
-    font-size: 0.78rem;
-    color: var(--cinza-medio);
+.ai-fab:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 10px 28px rgba(75, 199, 122, 0.45);
 }
 
-.ai-toggle-info {
-    margin-top: var(--espacamento-md);
-    font-size: 0.85rem;
+.ai-fab i {
+    font-size: 1.15rem;
+}
+
+.ai-fab:focus-visible {
+    outline: 3px solid var(--lilas-claro);
+    outline-offset: 2px;
+}
+
+@media screen and (max-width: 480px) {
+    .ai-fab {
+        right: var(--espacamento-md);
+        bottom: 5rem;
+        padding: var(--espacamento-md);
+        border-radius: 50%;
+    }
+
+    .ai-fab .ai-fab-label {
+        display: none;
+    }
 }
 
 .ai-disclaimer {
@@ -155,6 +164,21 @@
     background: var(--branco);
     z-index: 2;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.ai-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    min-width: 0;
+}
+
+.ai-header-left .ai-modal-info {
+    min-width: 0;
+}
+
+.ai-voltar {
+    flex-shrink: 0;
 }
 
 .ai-modal-info {
