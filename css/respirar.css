@@ -203,6 +203,13 @@
     color: var(--verde-claro);
 }
 
+.technique-description {
+    font-size: 0.9rem;
+    color: var(--cinza-medio);
+    margin-bottom: var(--espacamento-md);
+    line-height: 1.6;
+}
+
 .technique-steps {
     display: flex;
     flex-direction: column;
@@ -338,6 +345,17 @@
 
 .sound-toggle-label i {
     color: var(--verde-claro);
+}
+
+/* Opção dentro das informações da técnica */
+.technique-option {
+    justify-content: space-between;
+    margin-top: var(--espacamento-md);
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    background: var(--fundo-suave);
+    border: 1px solid var(--cinza-claro);
+    border-radius: var(--borda-radius-md);
+    box-shadow: none;
 }
 
 /* Benefícios */

@@ -315,6 +315,88 @@
     background: linear-gradient(135deg, rgba(115, 245, 159, 0.2), rgba(243, 215, 255, 0.2));
 }
 
+/* Dica de campos opcionais */
+.form-hint {
+    display: block;
+    margin-top: var(--espacamento-xs);
+    font-size: 0.8rem;
+    color: var(--cinza-medio);
+}
+
+/* Perguntas orientadoras (opcional) */
+.perguntas-guia {
+    margin-top: var(--espacamento-md);
+    border: 2px dashed var(--cinza-claro);
+    border-radius: var(--borda-radius-md);
+    padding: var(--espacamento-md);
+}
+
+.perguntas-guia-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--texto-escuro);
+    font-family: var(--font-principal);
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-align: left;
+}
+
+.perguntas-guia-toggle i {
+    color: var(--verde-escuro);
+    transition: transform var(--transicao-rapida);
+    font-size: 0.8rem;
+}
+
+.perguntas-guia-toggle.aberta i {
+    transform: rotate(180deg);
+}
+
+.perguntas-guia-toggle small {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--cinza-medio);
+    background: var(--cinza-claro);
+    padding: 2px 8px;
+    border-radius: var(--borda-radius-sm);
+}
+
+.perguntas-guia-dica {
+    margin-top: var(--espacamento-xs);
+    font-size: 0.8rem;
+    color: var(--cinza-medio);
+}
+
+.perguntas-guia-lista {
+    display: none;
+    margin-top: var(--espacamento-md);
+    gap: var(--espacamento-md);
+    flex-direction: column;
+}
+
+.perguntas-guia-lista.aberta {
+    display: flex;
+}
+
+.pergunta-guia-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--texto-escuro);
+    margin-bottom: var(--espacamento-xs);
+}
+
+.pergunta-guia-input {
+    min-height: 70px;
+    font-size: 0.95rem;
+}
+
 /* Estado Vazio */
 .diary-empty {
     text-align: center;
@@ -406,6 +488,46 @@
 .entry-view-text {
     font-size: 1rem;
     line-height: 1.8;
+    color: var(--texto-escuro);
+    white-space: pre-wrap;
+}
+
+/* Respostas das perguntas orientadoras */
+.entry-view-guia {
+    margin-top: var(--espacamento-lg);
+    padding: var(--espacamento-md);
+    background: var(--fundo-suave);
+    border-left: 4px solid var(--verde-claro);
+    border-radius: var(--borda-radius-md);
+}
+
+.entry-view-guia-titulo {
+    display: flex;
+    align-items: center;
+    gap: var(--espacamento-sm);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--verde-escuro);
+    margin-bottom: var(--espacamento-md);
+}
+
+.entry-guia-item + .entry-guia-item {
+    margin-top: var(--espacamento-md);
+    padding-top: var(--espacamento-md);
+    border-top: 1px solid var(--cinza-claro);
+}
+
+.entry-guia-pergunta {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--cinza-medio);
+    margin-bottom: 2px;
+}
+
+.entry-guia-resposta {
+    font-size: 0.95rem;
+    line-height: 1.6;
     color: var(--texto-escuro);
     white-space: pre-wrap;
 }

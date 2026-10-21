@@ -141,8 +141,27 @@
                             id="entryText" 
                             placeholder="Escreva livremente seus pensamentos, sentimentos, reflexões..."
                             rows="6"
-                            required
                         ></textarea>
+                        <small class="form-hint">Opcional: você pode escrever livremente ou responder às perguntas orientadoras abaixo.</small>
+                    </div>
+
+                    <!-- Perguntas orientadoras (opcional) -->
+                    <div class="perguntas-guia">
+                        <button 
+                            type="button" 
+                            class="perguntas-guia-toggle" 
+                            id="perguntasGuiaToggle" 
+                            aria-expanded="false" 
+                            aria-controls="perguntasGuiaLista"
+                        >
+                            <i class="fas fa-chevron-down"></i>
+                            <span>Perguntas orientadoras</span>
+                            <small>opcional</small>
+                        </button>
+                        <p class="perguntas-guia-dica" id="perguntasGuiaDica">
+                            Responda só o que fizer sentido. Você pode deixar em branco ou não abrir esta lista.
+                        </p>
+                        <div class="perguntas-guia-lista" id="perguntasGuiaLista"></div>
                     </div>
 
                 </form>
@@ -305,6 +324,7 @@
 
     <!-- Scripts -->
     <script src="js/app.js"></script>
+    <script src="js/notificacoes.js"></script>
     <script src="js/ia.js"></script>
     <script src="js/diario.js"></script>
 </body>

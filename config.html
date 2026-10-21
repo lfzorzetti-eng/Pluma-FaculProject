@@ -94,13 +94,76 @@
                     <i class="fas fa-bell"></i>
                     <div>
                         <span style="font-weight: 500;">Notificações</span>
-                        <p style="font-size: 0.8rem; color: var(--cinza-medio);">Lembretes diários</p>
+                        <p style="font-size: 0.8rem; color: var(--cinza-medio);">Desligue para não receber nenhum lembrete</p>
                     </div>
                 </div>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="notificationsToggle" checked>
+                    <input type="checkbox" id="notificationsToggle">
                     <span class="toggle-slider"></span>
                 </label>
+            </div>
+
+            <!-- Opções de notificação -->
+            <div class="notificacoes-opcoes" id="notificacoesOpcoes" hidden>
+                <p class="notificacoes-aviso">
+                    <i class="fas fa-heart"></i>
+                    Enviamos <strong>no máximo 1 lembrete por dia</strong>, no horário que você escolher.
+                    Nada é enviado se você desligar esta opção.
+                </p>
+
+                <div class="toggle-wrapper">
+                    <div class="toggle-label">
+                        <i class="fas fa-book"></i>
+                        <div>
+                            <span style="font-weight: 500;">Reflexões do dia</span>
+                            <p style="font-size: 0.8rem; color: var(--cinza-medio);">Sugerir uma escrita no diário</p>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notificacaoDiario">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-wrapper">
+                    <div class="toggle-label">
+                        <i class="fas fa-smile"></i>
+                        <div>
+                            <span style="font-weight: 500;">Registro de humor</span>
+                            <p style="font-size: 0.8rem; color: var(--cinza-medio);">Sugerir registrar como você está</p>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notificacaoHumor">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-wrapper">
+                    <div class="toggle-label">
+                        <i class="fas fa-wind"></i>
+                        <div>
+                            <span style="font-weight: 500;">Respiração 3-4-5</span>
+                            <p style="font-size: 0.8rem; color: var(--cinza-medio);">Sugerir um exercício de respiração</p>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notificacaoRespiracao">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="notificacaoHorario">Horário do lembrete</label>
+                    <input type="time" id="notificacaoHorario" class="form-input" value="20:00">
+                </div>
+
+                <button class="btn btn-outline btn-block" id="testNotificacaoBtn">
+                    <i class="fas fa-paper-plane"></i>
+                    Enviar notificação de teste
+                </button>
+
+                <p class="notificacoes-status" id="notificacoesStatus"></p>
             </div>
 
             <!-- Sons -->
@@ -237,6 +300,7 @@
 
     <!-- Scripts -->
     <script src="js/app.js"></script>
+    <script src="js/notificacoes.js"></script>
     <script>
         // Configurações da página
         document.addEventListener('DOMContentLoaded', function() {
@@ -248,14 +312,6 @@
                 const theme = this.checked ? 'dark' : 'light';
                 document.documentElement.setAttribute('data-theme', theme);
                 localStorage.setItem('pluma_theme', theme);
-            });
-
-            // Notificações Toggle
-            const notificationsToggle = document.getElementById('notificationsToggle');
-            notificationsToggle.checked = localStorage.getItem('pluma_notifications') !== 'false';
-            
-            notificationsToggle.addEventListener('change', function() {
-                localStorage.setItem('pluma_notifications', this.checked);
             });
 
             // Sons Toggle
@@ -299,6 +355,8 @@
                     localStorage.removeItem('pluma_moods');
                     localStorage.removeItem('pluma_diary');
                     localStorage.removeItem('pluma_breathing');
+                    localStorage.removeItem('pluma_notificacoes');
+                    localStorage.removeItem('pluma_notificacoes_envio');
                     alert('Dados apagados com sucesso!');
                     location.reload();
                 }

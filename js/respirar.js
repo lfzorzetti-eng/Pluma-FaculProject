@@ -1,190 +1,123 @@
 /**
  * Pluma - Exercícios de Respiração
- * Técnicas guiadas com animações e sons
+ *
+ * Técnica 3-4-5 (inspirar 3s, segurar 4s, expirar 5s).
+ * A antiga 4-7-8 prendia o ar por 7 segundos, o que gerava frustração e
+ * podia ativar gatilhos de sufocamento em pessoas com muita ansiedade.
  */
+
+const TECNICA_RESPIRACAO = {
+    chave: '3-4-5',
+    nome: 'Técnica 3-4-5',
+    inspirar: 3,
+    segurar: 4,
+    expirar: 5,
+    ciclos: 4
+};
+
+const CHAVE_SESSOES = 'pluma_respiracao_sessoes';
 
 class RespiracaoManager {
     constructor() {
-        this.tecnicas = {
-            '4-7-8': {
-                nome: 'Técnica 4-7-8',
-                descricao: 'Relaxamento profundo para dormir melhor',
-                inspirar: 4,
-                segurar: 7,
-                expirar: 8,
-                ciclos: 4
-            },
-            'box': {
-                nome: 'Respiração Quadrada',
-                descricao: 'Equilíbrio e foco mental',
-                inspirar: 4,
-                segurar: 4,
-                expirar: 4,
-                segurar2: 4,
-                ciclos: 4
-            },
-            'relaxante': {
-                nome: 'Respiração Relaxante',
-                descricao: 'Alívio rápido de estresse',
-                inspirar: 4,
-                segurar: 2,
-                expirar: 6,
-                ciclos: 6
-            },
-            'energizante': {
-                nome: 'Respiração Energizante',
-                descricao: 'Despertar e energizar',
-                inspirar: 2,
-                expirar: 2,
-                ciclos: 10
-            }
-        };
+        this.tecnica = TECNICA_RESPIRACAO;
 
-        this.tecnicaAtual = null;
         this.isRunning = false;
         this.isPaused = false;
         this.cicloAtual = 0;
         this.faseAtual = '';
         this.tempoRestante = 0;
+        this.tempoDecorrido = 0;
+        this.tempoTotal = 0;
         this.intervalo = null;
-        this.somAtivo = true;
+        this.somAtivo = localStorage.getItem('pluma_sounds') !== 'false';
+        this.pularSegurar = false;
+        this.audioContext = null;
 
         this.init();
     }
 
     init() {
         this.setupEventListeners();
-        this.renderTecnicas();
-    }
-
-    setupEventListeners() {
-        // Seleção de técnica
-        document.querySelectorAll('.tecnica-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const tecnica = card.dataset.tecnica;
-                this.selecionarTecnica(tecnica);
-            });
-        });
-
-        // Controles
-        const btnIniciar = document.getElementById('btn-iniciar');
-        const btnPausar = document.getElementById('btn-pausar');
-        const btnParar = document.getElementById('btn-parar');
-        const btnSom = document.getElementById('btn-som');
-
-        if (btnIniciar) {
-            btnIniciar.addEventListener('click', () => this.iniciar());
-        }
-        if (btnPausar) {
-            btnPausar.addEventListener('click', () => this.pausar());
-        }
-        if (btnParar) {
-            btnParar.addEventListener('click', () => this.parar());
-        }
-        if (btnSom) {
-            btnSom.addEventListener('click', () => this.toggleSom());
-        }
-    }
-
-    renderTecnicas() {
-        const container = document.getElementById('tecnicas-lista');
-        if (!container) return;
-
-        container.innerHTML = Object.entries(this.tecnicas).map(([key, tecnica]) => `
-            <div class="tecnica-card" data-tecnica="${key}">
-                <div class="tecnica-icon">${this.getTecnicaIcon(key)}</div>
-                <h3>${tecnica.nome}</h3>
-                <p>${tecnica.descricao}</p>
-                <div class="tecnica-tempos">
-                    <span>Inspirar: ${tecnica.inspirar}s</span>
-                    ${tecnica.segurar ? `<span>Segurar: ${tecnica.segurar}s</span>` : ''}
-                    <span>Expirar: ${tecnica.expirar}s</span>
-                    ${tecnica.segurar2 ? `<span>Segurar: ${tecnica.segurar2}s</span>` : ''}
-                </div>
-                <span class="tecnica-ciclos">${tecnica.ciclos} ciclos</span>
-            </div>
-        `).join('');
-
-        // Re-attach event listeners
-        document.querySelectorAll('.tecnica-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const tecnica = card.dataset.tecnica;
-                this.selecionarTecnica(tecnica);
-            });
-        });
-    }
-
-    getTecnicaIcon(key) {
-        const icons = {
-            '4-7-8': '🌙',
-            'box': '⬜',
-            'relaxante': '🍃',
-            'energizante': '⚡'
-        };
-        return icons[key] || '🌬️';
-    }
-
-    selecionarTecnica(key) {
-        this.tecnicaAtual = this.tecnicas[key];
-        this.tecnicaAtual.key = key;
-        
-        // Atualizar UI
-        document.querySelectorAll('.tecnica-card').forEach(card => {
-            card.classList.remove('selected');
-            if (card.dataset.tecnica === key) {
-                card.classList.add('selected');
-            }
-        });
-
-        // Mostrar controles
-        const controles = document.getElementById('controles-respiracao');
-        if (controles) {
-            controles.classList.add('visible');
-        }
-
-        // Atualizar info
-        const infoTecnica = document.getElementById('info-tecnica');
-        if (infoTecnica) {
-            infoTecnica.innerHTML = `
-                <h3>${this.tecnicaAtual.nome}</h3>
-                <p>${this.tecnicaAtual.descricao}</p>
-            `;
-        }
-
+        this.atualizarEstatisticas();
         this.resetUI();
     }
 
-    iniciar() {
-        if (!this.tecnicaAtual) {
-            alert('Selecione uma técnica primeiro');
-            return;
+    // ============================================
+    // EVENTOS
+    // ============================================
+
+    setupEventListeners() {
+        const btnIniciar = document.getElementById('startBtn');
+        const btnReset = document.getElementById('resetBtn');
+        const toggleSom = document.getElementById('soundToggle');
+        const toggleSemSegurar = document.getElementById('pularSegurar');
+        const btnLimpar = document.getElementById('statsReset');
+
+        if (btnIniciar) {
+            btnIniciar.addEventListener('click', () => {
+                if (this.isRunning) {
+                    this.alternarPausa();
+                } else {
+                    this.iniciar();
+                }
+            });
         }
+
+        if (btnReset) {
+            btnReset.addEventListener('click', () => this.parar());
+        }
+
+        if (toggleSom) {
+            toggleSom.checked = this.somAtivo;
+            toggleSom.addEventListener('change', () => {
+                this.somAtivo = toggleSom.checked;
+                localStorage.setItem('pluma_sounds', String(this.somAtivo));
+            });
+        }
+
+        if (toggleSemSegurar) {
+            toggleSemSegurar.addEventListener('change', () => {
+                this.pularSegurar = toggleSemSegurar.checked;
+            });
+        }
+
+        if (btnLimpar) {
+            btnLimpar.addEventListener('click', () => this.limparEstatisticas());
+        }
+    }
+
+    // ============================================
+    // CICLO DE RESPIRAÇÃO
+    // ============================================
+
+    iniciar() {
+        if (this.isRunning) return;
 
         this.isRunning = true;
         this.isPaused = false;
         this.cicloAtual = 1;
-        
-        this.updateControles();
+        this.tempoDecorrido = 0;
+        this.tempoTotal = this.duracaoSessao();
+
+        this.atualizarControles();
         this.executarCiclo();
     }
 
-    pausar() {
+    alternarPausa() {
         this.isPaused = !this.isPaused;
-        
-        const btnPausar = document.getElementById('btn-pausar');
-        if (btnPausar) {
-            btnPausar.innerHTML = this.isPaused ? `
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Continuar
-            ` : `
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="6" y="4" width="4" height="16"></rect>
-                    <rect x="14" y="4" width="4" height="16"></rect>
-                </svg>
-                Pausar
-            `;
+
+        const btnIniciar = document.getElementById('startBtn');
+        if (btnIniciar) {
+            btnIniciar.innerHTML = this.isPaused
+                ? '<i class="fas fa-play"></i>'
+                : '<i class="fas fa-pause"></i>';
+            btnIniciar.setAttribute('aria-label', this.isPaused ? 'Continuar' : 'Pausar');
+            btnIniciar.classList.toggle('playing', !this.isPaused);
+        }
+
+        const instructionLabel = document.getElementById('instructionLabel');
+        if (instructionLabel && this.isPaused) {
+            instructionLabel.textContent = 'Pausado';
         }
     }
 
@@ -192,52 +125,32 @@ class RespiracaoManager {
         this.isRunning = false;
         this.isPaused = false;
         this.cicloAtual = 0;
-        
+
         if (this.intervalo) {
             clearInterval(this.intervalo);
             this.intervalo = null;
         }
 
         this.resetUI();
-        this.updateControles();
-    }
-
-    toggleSom() {
-        this.somAtivo = !this.somAtivo;
-        
-        const btnSom = document.getElementById('btn-som');
-        if (btnSom) {
-            btnSom.innerHTML = this.somAtivo ? '🔊' : '🔇';
-            btnSom.classList.toggle('muted', !this.somAtivo);
-        }
+        this.atualizarControles();
     }
 
     async executarCiclo() {
-        const tecnica = this.tecnicaAtual;
+        while (this.isRunning && this.cicloAtual <= this.tecnica.ciclos) {
+            await this.executarFase('inspirar', this.tecnica.inspirar);
+            if (!this.isRunning) return;
 
-        while (this.cicloAtual <= tecnica.ciclos && this.isRunning) {
-            // Inspirar
-            await this.executarFase('inspirar', tecnica.inspirar);
-            if (!this.isRunning) break;
-
-            // Segurar (se existir)
-            if (tecnica.segurar) {
-                await this.executarFase('segurar', tecnica.segurar);
-                if (!this.isRunning) break;
+            // A retenção do ar é opcional: quem tem gatilho de sufocamento pode pular
+            if (!this.pularSegurar) {
+                await this.executarFase('segurar', this.tecnica.segurar);
+                if (!this.isRunning) return;
             }
 
-            // Expirar
-            await this.executarFase('expirar', tecnica.expirar);
-            if (!this.isRunning) break;
+            await this.executarFase('expirar', this.tecnica.expirar);
+            if (!this.isRunning) return;
 
-            // Segurar 2 (box breathing)
-            if (tecnica.segurar2) {
-                await this.executarFase('segurar', tecnica.segurar2);
-                if (!this.isRunning) break;
-            }
-
-            this.cicloAtual++;
-            this.updateCicloUI();
+            this.cicloAtual += 1;
+            this.atualizarControleUI();
         }
 
         if (this.isRunning) {
@@ -246,110 +159,176 @@ class RespiracaoManager {
     }
 
     executarFase(fase, duracao) {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             this.faseAtual = fase;
             this.tempoRestante = duracao;
-            
-            this.updateFaseUI();
-            this.playSound(fase);
 
-            const circle = document.getElementById('breathing-circle');
+            this.atualizarFaseUI();
+            this.atualizarTempoUI();
+            this.tocarSom(fase);
+
+            const circle = document.getElementById('breathingCircle');
             if (circle) {
-                circle.className = 'breathing-circle ' + fase;
+                circle.className = 'breathing-circle ' + this.classeFase(fase);
                 circle.style.animationDuration = duracao + 's';
+                circle.style.transitionDuration = duracao + 's';
             }
 
             this.intervalo = setInterval(() => {
                 if (this.isPaused) return;
 
-                this.tempoRestante--;
-                this.updateTempoUI();
+                this.tempoRestante -= 1;
+                this.tempoDecorrido += 1;
+
+                this.atualizarTempoUI();
+                this.atualizarProgresso();
 
                 if (this.tempoRestante <= 0) {
                     clearInterval(this.intervalo);
+                    this.intervalo = null;
                     resolve();
                 }
             }, 1000);
         });
     }
 
-    updateFaseUI() {
-        const instrucao = document.getElementById('instrucao');
-        if (instrucao) {
-            const textos = {
-                'inspirar': 'Inspire pelo nariz...',
-                'segurar': 'Segure o ar...',
-                'expirar': 'Expire lentamente...'
-            };
-            instrucao.textContent = textos[this.faseAtual] || '';
-            instrucao.className = 'instrucao ' + this.faseAtual;
+    classeFase(fase) {
+        if (fase === 'inspirar') return 'inhale';
+        if (fase === 'segurar') return 'hold';
+        return 'exhale';
+    }
+
+    duracaoSessao() {
+        const porCiclo = this.pularSegurar
+            ? this.tecnica.inspirar + this.tecnica.expirar
+            : this.tecnica.inspirar + this.tecnica.segurar + this.tecnica.expirar;
+
+        return porCiclo * this.tecnica.ciclos;
+    }
+
+    // ============================================
+    // INTERFACE
+    // ============================================
+
+    atualizarFaseUI() {
+        const instrucoes = {
+            'inspirar': {
+                label: 'Inspire pelo nariz',
+                desc: 'Devagar, sem forçar o ar',
+                texto: 'Inspire'
+            },
+            'segurar': {
+                label: 'Segure o ar',
+                desc: 'De forma breve e suave',
+                texto: 'Segure'
+            },
+            'expirar': {
+                label: 'Expire lentamente',
+                desc: 'Solte o ar aos poucos',
+                texto: 'Expire'
+            }
+        };
+
+        const info = instrucoes[this.faseAtual];
+        if (!info) return;
+
+        const instructionLabel = document.getElementById('instructionLabel');
+        if (instructionLabel) instructionLabel.textContent = info.label;
+
+        const instructionDesc = document.getElementById('instructionDesc');
+        if (instructionDesc) instructionDesc.textContent = info.desc;
+
+        const breathingText = document.getElementById('breathingText');
+        if (breathingText) breathingText.textContent = info.texto;
+    }
+
+    atualizarTempoUI() {
+        const timer = document.getElementById('breathingTimer');
+        if (timer) timer.textContent = this.tempoRestante;
+    }
+
+    atualizarProgresso() {
+        const ring = document.getElementById('progressRing');
+        if (!ring || !this.tempoTotal) return;
+
+        const progresso = Math.min(1, this.tempoDecorrido / this.tempoTotal);
+        ring.style.strokeDashoffset = String(817 * (1 - progresso));
+    }
+
+    atualizarControleUI() {
+        const instructionLabel = document.getElementById('instructionLabel');
+        if (instructionLabel && this.isRunning && !this.isPaused) {
+            instructionLabel.textContent = `Ciclo ${this.cicloAtual} de ${this.tecnica.ciclos}`;
         }
     }
 
-    updateTempoUI() {
-        const tempo = document.getElementById('tempo-restante');
-        if (tempo) {
-            tempo.textContent = this.tempoRestante;
-        }
-    }
-
-    updateCicloUI() {
-        const ciclos = document.getElementById('ciclos-contador');
-        if (ciclos) {
-            ciclos.textContent = `Ciclo ${this.cicloAtual} de ${this.tecnicaAtual.ciclos}`;
-        }
-    }
-
-    updateControles() {
-        const btnIniciar = document.getElementById('btn-iniciar');
-        const btnPausar = document.getElementById('btn-pausar');
-        const btnParar = document.getElementById('btn-parar');
+    atualizarControles() {
+        const btnIniciar = document.getElementById('startBtn');
+        const btnReset = document.getElementById('resetBtn');
 
         if (btnIniciar) {
-            btnIniciar.style.display = this.isRunning ? 'none' : 'flex';
+            if (this.isRunning) {
+                btnIniciar.innerHTML = '<i class="fas fa-pause"></i>';
+                btnIniciar.setAttribute('aria-label', 'Pausar');
+                btnIniciar.classList.add('playing');
+            } else {
+                btnIniciar.innerHTML = '<i class="fas fa-play"></i>';
+                btnIniciar.setAttribute('aria-label', 'Iniciar');
+                btnIniciar.classList.remove('playing');
+            }
         }
-        if (btnPausar) {
-            btnPausar.style.display = this.isRunning ? 'flex' : 'none';
-        }
-        if (btnParar) {
-            btnParar.style.display = this.isRunning ? 'flex' : 'none';
+
+        if (btnReset) {
+            btnReset.style.display = this.isRunning ? 'flex' : 'none';
         }
     }
 
     resetUI() {
-        const circle = document.getElementById('breathing-circle');
+        const circle = document.getElementById('breathingCircle');
         if (circle) {
-            circle.className = 'breathing-circle';
+            circle.className = 'breathing-circle idle';
+            circle.style.animationDuration = '';
+            circle.style.transitionDuration = '';
         }
 
-        const instrucao = document.getElementById('instrucao');
-        if (instrucao) {
-            instrucao.textContent = 'Pressione iniciar quando estiver pronto';
-            instrucao.className = 'instrucao';
-        }
+        const instructionLabel = document.getElementById('instructionLabel');
+        if (instructionLabel) instructionLabel.textContent = 'Toque para começar';
 
-        const tempo = document.getElementById('tempo-restante');
-        if (tempo) {
-            tempo.textContent = '-';
-        }
+        const instructionDesc = document.getElementById('instructionDesc');
+        if (instructionDesc) instructionDesc.textContent = 'Relaxe e concentre-se na sua respiração';
 
-        const ciclos = document.getElementById('ciclos-contador');
-        if (ciclos && this.tecnicaAtual) {
-            ciclos.textContent = `0 de ${this.tecnicaAtual.ciclos} ciclos`;
-        }
+        const breathingText = document.getElementById('breathingText');
+        if (breathingText) breathingText.textContent = 'Pronto?';
+
+        const timer = document.getElementById('breathingTimer');
+        if (timer) timer.textContent = '';
+
+        const ring = document.getElementById('progressRing');
+        if (ring) ring.style.strokeDashoffset = '817';
     }
 
-    playSound(fase) {
+    // ============================================
+    // SOM
+    // ============================================
+
+    tocarSom(fase) {
         if (!this.somAtivo) return;
 
-        // Usar Web Audio API para sons simples
         try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            if (!this.audioContext) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                this.audioContext = new AudioCtx();
+            }
+
+            const contexto = this.audioContext;
+            if (contexto.state === 'suspended') contexto.resume();
+
+            const oscillator = contexto.createOscillator();
+            const gainNode = contexto.createGain();
 
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(contexto.destination);
 
             const frequencias = {
                 'inspirar': 440,
@@ -359,170 +338,112 @@ class RespiracaoManager {
 
             oscillator.frequency.value = frequencias[fase] || 440;
             oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
 
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.08, contexto.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, contexto.currentTime + 0.3);
+
+            oscillator.start(contexto.currentTime);
+            oscillator.stop(contexto.currentTime + 0.3);
         } catch (e) {
-            // Silenciar erros de áudio
+            // Áudio indisponível: o exercício continua normalmente
         }
     }
+
+    // ============================================
+    // ESTATÍSTICAS
+    // ============================================
+
+    lerSessoes() {
+        try {
+            const sessoes = JSON.parse(localStorage.getItem(CHAVE_SESSOES) || '[]');
+            return Array.isArray(sessoes) ? sessoes : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    salvarSessao(duracaoSegundos) {
+        const sessoes = this.lerSessoes();
+        sessoes.push({
+            id: Date.now().toString(),
+            tecnica: this.tecnica.chave,
+            nome: this.tecnica.nome,
+            data: new Date().toISOString(),
+            ciclos: this.tecnica.ciclos,
+            duracaoSegundos
+        });
+        localStorage.setItem(CHAVE_SESSOES, JSON.stringify(sessoes));
+
+        if (typeof Pluma !== 'undefined' && typeof Pluma.saveBreathingSession === 'function') {
+            Pluma.saveBreathingSession(Math.max(1, Math.round(duracaoSegundos / 60)));
+        }
+    }
+
+    atualizarEstatisticas() {
+        const sessoes = this.lerSessoes();
+        const hoje = new Date().toDateString();
+
+        const hojeCount = sessoes.filter(s => new Date(s.data).toDateString() === hoje).length;
+        const totalSegundos = sessoes.reduce((total, s) => total + (s.duracaoSegundos || 0), 0);
+
+        const elHoje = document.getElementById('todaySessions');
+        const elTotal = document.getElementById('totalSessions');
+        const elMinutos = document.getElementById('totalMinutes');
+
+        if (elHoje) elHoje.textContent = hojeCount;
+        if (elTotal) elTotal.textContent = sessoes.length;
+        if (elMinutos) elMinutos.textContent = Math.round(totalSegundos / 60);
+    }
+
+    limparEstatisticas() {
+        if (!confirm('Tem certeza que deseja apagar todas as sessões de respiração?')) {
+            return;
+        }
+
+        localStorage.removeItem(CHAVE_SESSOES);
+
+        if (typeof Pluma !== 'undefined' && typeof Pluma.saveToStorage === 'function') {
+            Pluma.saveToStorage(Pluma.STORAGE_KEYS.BREATHING, {
+                totalSessions: 0,
+                totalMinutes: 0,
+                todaySessions: 0,
+                lastSessionDate: null
+            });
+        }
+
+        this.atualizarEstatisticas();
+    }
+
+    // ============================================
+    // CONCLUSÃO
+    // ============================================
 
     concluirExercicio() {
         this.isRunning = false;
-        
-        const instrucao = document.getElementById('instrucao');
-        if (instrucao) {
-            instrucao.textContent = 'Exercício concluído! Como você se sente?';
-            instrucao.className = 'instrucao concluido';
-        }
 
-        const circle = document.getElementById('breathing-circle');
+        const instructionLabel = document.getElementById('instructionLabel');
+        if (instructionLabel) instructionLabel.textContent = 'Exercício concluído!';
+
+        const instructionDesc = document.getElementById('instructionDesc');
+        if (instructionDesc) instructionDesc.textContent = 'Como você está se sentindo agora?';
+
+        const breathingText = document.getElementById('breathingText');
+        if (breathingText) breathingText.textContent = 'Muito bem';
+
+        const circle = document.getElementById('breathingCircle');
         if (circle) {
-            circle.className = 'breathing-circle concluido';
+            circle.className = 'breathing-circle idle';
+            circle.style.animationDuration = '';
+            circle.style.transitionDuration = '';
         }
 
-        this.updateControles();
-        this.salvarSessao();
-        this.mostrarFeedback();
-    }
-
-    salvarSessao() {
-        const sessoes = JSON.parse(localStorage.getItem('pluma_respiracao_sessoes') || '[]');
-        sessoes.push({
-            id: Date.now().toString(),
-            tecnica: this.tecnicaAtual.key,
-            nome: this.tecnicaAtual.nome,
-            data: new Date().toISOString(),
-            ciclos: this.tecnicaAtual.ciclos
-        });
-        localStorage.setItem('pluma_respiracao_sessoes', JSON.stringify(sessoes));
-    }
-
-    mostrarFeedback() {
-        const feedback = document.getElementById('feedback-modal');
-        if (feedback) {
-            feedback.classList.add('visible');
-        }
-    }
-}
-
-// Timer de Meditação Simples
-class TimerMeditacao {
-    constructor() {
-        this.minutos = 5;
-        this.segundos = 0;
-        this.isRunning = false;
-        this.intervalo = null;
-        
-        this.init();
-    }
-
-    init() {
-        this.setupEventListeners();
-    }
-
-    setupEventListeners() {
-        const btnMais = document.getElementById('timer-mais');
-        const btnMenos = document.getElementById('timer-menos');
-        const btnIniciar = document.getElementById('timer-iniciar');
-
-        if (btnMais) {
-            btnMais.addEventListener('click', () => this.ajustarTempo(1));
-        }
-        if (btnMenos) {
-            btnMenos.addEventListener('click', () => this.ajustarTempo(-1));
-        }
-        if (btnIniciar) {
-            btnIniciar.addEventListener('click', () => this.toggle());
-        }
-    }
-
-    ajustarTempo(delta) {
-        if (this.isRunning) return;
-        
-        this.minutos = Math.max(1, Math.min(60, this.minutos + delta));
-        this.updateDisplay();
-    }
-
-    toggle() {
-        if (this.isRunning) {
-            this.pausar();
-        } else {
-            this.iniciar();
-        }
-    }
-
-    iniciar() {
-        this.isRunning = true;
-        this.segundos = this.minutos * 60;
-        
-        const btn = document.getElementById('timer-iniciar');
-        if (btn) btn.textContent = 'Pausar';
-
-        this.intervalo = setInterval(() => {
-            this.segundos--;
-            this.updateDisplay();
-
-            if (this.segundos <= 0) {
-                this.concluir();
-            }
-        }, 1000);
-    }
-
-    pausar() {
-        this.isRunning = false;
-        clearInterval(this.intervalo);
-        
-        const btn = document.getElementById('timer-iniciar');
-        if (btn) btn.textContent = 'Continuar';
-    }
-
-    concluir() {
-        this.isRunning = false;
-        clearInterval(this.intervalo);
-        
-        // Som de conclusão
-        try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.frequency.value = 528;
-            oscillator.type = 'sine';
-            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2);
-            oscillator.start();
-            oscillator.stop(audioContext.currentTime + 2);
-        } catch (e) {}
-
-        const btn = document.getElementById('timer-iniciar');
-        if (btn) btn.textContent = 'Iniciar';
-        
-        this.minutos = 5;
-        this.updateDisplay();
-
-        alert('Meditação concluída! Namastê 🙏');
-    }
-
-    updateDisplay() {
-        const display = document.getElementById('timer-display');
-        if (display) {
-            const mins = Math.floor(this.segundos / 60);
-            const secs = this.segundos % 60;
-            display.textContent = this.isRunning 
-                ? `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-                : `${this.minutos} min`;
-        }
+        this.atualizarControles();
+        this.salvarSessao(this.tempoTotal);
+        this.atualizarEstatisticas();
     }
 }
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     new RespiracaoManager();
-    new TimerMeditacao();
 });

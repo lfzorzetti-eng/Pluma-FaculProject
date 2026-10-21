@@ -38,7 +38,7 @@
             <!-- Header -->
             <section class="breathing-header fade-in">
                 <h2>Exercício de Respiração</h2>
-                <p>Técnica 4-7-8 para relaxamento</p>
+                <p>Técnica 3-4-5 para relaxar sem prender o ar por muito tempo</p>
             </section>
 
             <!-- Área do Exercício -->
@@ -80,30 +80,45 @@
             <section class="technique-info">
                 <h3 class="technique-title">
                     <i class="fas fa-info-circle"></i>
-                    Técnica 4-7-8
+                    Técnica 3-4-5
                 </h3>
+                <p class="technique-description">
+                    Inspire por 3 segundos, segure por 4 e expire por 5.
+                    A retenção é curta de propósito: se respirar prendendo o ar incomoda,
+                    use a opção abaixo para pular essa etapa.
+                </p>
                 <div class="technique-steps">
                     <div class="technique-step">
                         <span class="step-number inhale">1</span>
                         <div class="step-content">
                             <span class="step-label">Inspire</span>
-                            <span class="step-duration">4 segundos</span>
+                            <span class="step-duration">3 segundos</span>
                         </div>
                     </div>
                     <div class="technique-step">
                         <span class="step-number hold">2</span>
                         <div class="step-content">
-                            <span class="step-label">Segure</span>
-                            <span class="step-duration">7 segundos</span>
+                            <span class="step-label">Segure (de forma breve)</span>
+                            <span class="step-duration">4 segundos</span>
                         </div>
                     </div>
                     <div class="technique-step">
                         <span class="step-number exhale">3</span>
                         <div class="step-content">
                             <span class="step-label">Expire</span>
-                            <span class="step-duration">8 segundos</span>
+                            <span class="step-duration">5 segundos</span>
                         </div>
                     </div>
+                </div>
+                <div class="sound-toggle technique-option">
+                    <div class="sound-toggle-label">
+                        <i class="fas fa-wind"></i>
+                        Expirar sem segurar o ar
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="pularSegurar">
+                        <span class="toggle-slider"></span>
+                    </label>
                 </div>
             </section>
 
@@ -198,6 +213,7 @@
 
     <!-- Scripts -->
     <script src="js/app.js"></script>
+    <script src="js/notificacoes.js"></script>
     <script src="js/respirar.js"></script>
 </body>
 </html>

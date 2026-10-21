@@ -723,6 +723,52 @@ body {
     transform: translateX(24px);
 }
 
+/* Controle de Notificações */
+.notificacoes-opcoes {
+    padding: var(--espacamento-md);
+    margin-bottom: var(--espacamento-md);
+    background: var(--fundo-suave);
+    border: 1px solid var(--cinza-claro);
+    border-radius: var(--borda-radius-md);
+}
+
+.notificacoes-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--espacamento-sm);
+    font-size: 0.85rem;
+    color: var(--cinza-medio);
+    margin-bottom: var(--espacamento-md);
+    line-height: 1.5;
+}
+
+.notificacoes-aviso i {
+    color: var(--verde-escuro);
+    margin-top: 2px;
+}
+
+.notificacoes-status {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--espacamento-sm);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: var(--espacamento-sm) var(--espacamento-md);
+    border-radius: var(--borda-radius-md);
+    background: var(--cinza-claro);
+    color: var(--cinza-medio);
+}
+
+.notificacoes-status.ativo {
+    background: rgba(115, 245, 159, 0.15);
+    color: var(--verde-escuro);
+}
+
+.notificacoes-status.atencao {
+    background: rgba(243, 215, 255, 0.3);
+    color: var(--lilas-escuro);
+}
+
 /* Utilitários */
 .text-center { text-align: center; }
 .text-left { text-align: left; }

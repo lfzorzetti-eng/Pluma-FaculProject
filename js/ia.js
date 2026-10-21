@@ -179,6 +179,7 @@ const IaChats = {
             title: entry.title,
             emotion: entry.emotion || null,
             entryText: entry.text,
+            entryRespostas: Array.isArray(entry.respostas) ? entry.respostas : [],
             entryCreatedAt: entry.createdAt || now,
             createdAt: now,
             updatedAt: now,
@@ -203,6 +204,7 @@ const IaChats = {
             title: 'Conversa livre',
             emotion: null,
             entryText: '',
+            entryRespostas: [],
             entryCreatedAt: null,
             createdAt: now,
             updatedAt: now,
@@ -222,6 +224,7 @@ const IaChats = {
         chat.title = entry.title;
         chat.emotion = entry.emotion || null;
         chat.entryText = entry.text;
+        chat.entryRespostas = Array.isArray(entry.respostas) ? entry.respostas : [];
         chat.entryCreatedAt = entry.createdAt || chat.entryCreatedAt;
         saveToStorage(IA_CHATS_KEY, chats);
         return chat;
@@ -350,15 +353,28 @@ const IaChats = {
 function montarMensagemContexto(chat) {
     const emocao = chat.emotion ? Pluma.getEmotionData(chat.emotion) : null;
     const data = chat.createdAt ? Pluma.formatDateTime(chat.createdAt) : 'data desconhecida';
+    const respostas = Array.isArray(chat.entryRespostas) ? chat.entryRespostas : [];
 
-    return [
+    const linhas = [
         '[Contexto: entrada de diário do usuário]',
         `Título: ${chat.title}`,
         `Data: ${data}`,
         emocao ? `Humor registrado: ${emocao.label}` : null,
-        '',
-        chat.entryText
-    ].filter(linha => linha !== null).join('\n');
+        ''
+    ];
+
+    if (chat.entryText) {
+        linhas.push(chat.entryText);
+    }
+
+    if (respostas.length) {
+        linhas.push('', '[Perguntas orientadoras respondidas]');
+        respostas.forEach(r => {
+            linhas.push(`- ${r.pergunta} ${r.resposta}`);
+        });
+    }
+
+    return linhas.filter(linha => linha !== null).join('\n');
 }
 
 // Resumo das últimas entradas do diário para a IA conhecer a pessoa
@@ -372,10 +388,15 @@ function montarContextoDiario(limite = 12, maxChars = 240) {
         const emocao = e.emotion ? Pluma.getEmotionData(e.emotion) : null;
         const data = e.createdAt ? Pluma.formatDate(e.createdAt, 'medium') : 'data desconhecida';
         const texto = String(e.text || '').replace(/\s+/g, ' ').trim();
-        if (!texto) return null;
+        const respostas = Array.isArray(e.respostas)
+            ? e.respostas.map(r => `${r.pergunta} ${r.resposta}`).join(' ').replace(/\s+/g, ' ').trim()
+            : '';
+        if (!texto && !respostas) return null;
 
-        const corpo = texto.length > maxChars ? `${texto.slice(0, maxChars).trim()}…` : texto;
+        const corpoTexto = texto.length > maxChars ? `${texto.slice(0, maxChars).trim()}…` : texto;
+        const corpoRespostas = respostas.length > maxChars ? `${respostas.slice(0, maxChars).trim()}…` : respostas;
         const emocaoTxt = emocao ? ` • humor: ${emocao.label}` : '';
+        const corpo = [corpoTexto, corpoRespostas].filter(Boolean).join(' | ');
         return `- [${data}] ${e.title}${emocaoTxt}: ${corpo}`;
     }).filter(Boolean);
 

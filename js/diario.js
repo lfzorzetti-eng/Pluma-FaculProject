@@ -7,6 +7,15 @@ let currentEntryId = null;
 let selectedEntryEmotion = null;
 let isEditing = false;
 
+// Perguntas orientadoras opcionais: ajudam a estruturar a reflexão sem obrigar
+// a pessoa a responder tudo (o texto livre continua disponível).
+const PERGUNTAS_ORIENTADORAS = [
+    { id: 'o-que-aconteceu', pergunta: 'O que aconteceu?' },
+    { id: 'o-que-pode-ajudar', pergunta: 'O que pode me ajudar agora?' },
+    { id: 'rede-de-apoio', pergunta: 'Quem da minha rede de apoio pode oferecer ajuda?' },
+    { id: 'como-melhorar', pergunta: 'Como posso melhorar essa situação?' }
+];
+
 document.addEventListener('DOMContentLoaded', function() {
     initDiaryPage();
 });
@@ -26,6 +35,70 @@ function initDiaryPage() {
     
     // Configura seletor de emoção
     setupEmotionSelector();
+    
+    // Configura perguntas orientadoras
+    setupPerguntasGuia();
+}
+
+// ============================================
+// PERGUNTAS ORIENTADORAS
+// ============================================
+
+function setupPerguntasGuia() {
+    const lista = document.getElementById('perguntasGuiaLista');
+    if (!lista) return;
+
+    lista.innerHTML = PERGUNTAS_ORIENTADORAS.map(p => `
+        <div class="pergunta-guia">
+            <label class="pergunta-guia-label" for="guia-${p.id}">${p.pergunta}</label>
+            <textarea
+                class="form-textarea pergunta-guia-input"
+                id="guia-${p.id}"
+                data-guia-id="${p.id}"
+                rows="2"
+                placeholder="Escreva aqui, se quiser..."
+            ></textarea>
+        </div>
+    `).join('');
+
+    const toggle = document.getElementById('perguntasGuiaToggle');
+    if (!toggle) return;
+
+    toggle.addEventListener('click', function() {
+        const aberta = lista.classList.toggle('aberta');
+        toggle.classList.toggle('aberta', aberta);
+        toggle.setAttribute('aria-expanded', aberta ? 'true' : 'false');
+    });
+}
+
+// Devolve apenas as perguntas que foram respondidas
+function coletarRespostasGuia() {
+    return PERGUNTAS_ORIENTADORAS
+        .map(p => {
+            const campo = document.getElementById(`guia-${p.id}`);
+            const resposta = campo ? campo.value.trim() : '';
+            return resposta ? { id: p.id, pergunta: p.pergunta, resposta } : null;
+        })
+        .filter(Boolean);
+}
+
+// Preenche as perguntas de uma entrada que já existe
+function preencherRespostasGuia(respostas) {
+    if (!Array.isArray(respostas)) return;
+    respostas.forEach(r => {
+        const campo = document.getElementById(`guia-${r.id}`);
+        if (campo) campo.value = r.resposta || '';
+    });
+}
+
+function respostasDaEntrada(entry) {
+    return Array.isArray(entry && entry.respostas) ? entry.respostas : [];
+}
+
+// Texto usado no card e na busca quando a pessoa não escreveu no campo livre
+function textoPreview(entry) {
+    if (entry.text) return entry.text;
+    return respostasDaEntrada(entry).map(r => r.resposta).join(' ');
 }
 
 // ============================================
@@ -107,7 +180,7 @@ function createEntryCard(entry, temConversa = false) {
                 </div>
             </div>
             <h3 class="entry-title">${Pluma.escapeHtml(entry.title)}</h3>
-            <p class="entry-preview">${Pluma.escapeHtml(entry.text)}</p>
+            <p class="entry-preview">${Pluma.escapeHtml(textoPreview(entry))}</p>
             <div class="entry-actions">
                 <button class="entry-action talk-ai">
                     <i class="fas fa-user-doctor"></i>
@@ -148,6 +221,22 @@ function viewEntry(id) {
     currentEntryId = id;
     
     const emotionData = entry.emotion ? Pluma.getEmotionData(entry.emotion) : { icon: '📝', label: '' };
+    const respostas = respostasDaEntrada(entry);
+    
+    const blocoGuia = respostas.length ? `
+        <div class="entry-view-guia">
+            <h4 class="entry-view-guia-titulo">
+                <i class="fas fa-compass"></i>
+                Perguntas orientadoras
+            </h4>
+            ${respostas.map(r => `
+                <div class="entry-guia-item">
+                    <span class="entry-guia-pergunta">${Pluma.escapeHtml(r.pergunta)}</span>
+                    <p class="entry-guia-resposta">${Pluma.escapeHtml(r.resposta)}</p>
+                </div>
+            `).join('')}
+        </div>
+    ` : '';
     
     const viewContent = document.getElementById('entryViewContent');
     viewContent.innerHTML = `
@@ -159,7 +248,8 @@ function viewEntry(id) {
             </div>
         </div>
         <h2 class="entry-view-title">${Pluma.escapeHtml(entry.title)}</h2>
-        <div class="entry-view-text">${Pluma.escapeHtml(entry.text)}</div>
+        ${entry.text ? `<div class="entry-view-text">${Pluma.escapeHtml(entry.text)}</div>` : ''}
+        ${blocoGuia}
         <button class="btn btn-primary entry-view-ai-btn" id="talkAiFromView">
             <i class="fas fa-user-doctor"></i>
             Conversar com a IA sobre este dia
@@ -238,6 +328,20 @@ function clearForm() {
     document.getElementById('entryText').value = '';
     selectedEntryEmotion = null;
     
+    // Limpa as perguntas orientadoras e fecha a lista
+    document.querySelectorAll('.pergunta-guia-input').forEach(campo => {
+        campo.value = '';
+    });
+    
+    const lista = document.getElementById('perguntasGuiaLista');
+    if (lista) lista.classList.remove('aberta');
+    
+    const toggle = document.getElementById('perguntasGuiaToggle');
+    if (toggle) {
+        toggle.classList.remove('aberta');
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+    
     document.querySelectorAll('.emotion-option').forEach(opt => {
         opt.classList.remove('selected');
     });
@@ -266,16 +370,23 @@ function setupEmotionSelector() {
 function saveEntry() {
     const title = document.getElementById('entryTitle').value.trim();
     const text = document.getElementById('entryText').value.trim();
+    const respostas = coletarRespostasGuia();
     
-    if (!title || !text) {
-        alert('Por favor, preencha o título e o texto.');
+    if (!title) {
+        alert('Por favor, dê um título para a entrada.');
+        return;
+    }
+    
+    if (!text && respostas.length === 0) {
+        alert('Escreva alguma coisa ou responda pelo menos uma pergunta orientadora.');
         return;
     }
     
     const entryData = {
         title,
         text,
-        emotion: selectedEntryEmotion
+        emotion: selectedEntryEmotion,
+        respostas
     };
     
     let success;
@@ -312,7 +423,22 @@ function editEntry(id) {
     
     // Preenche formulário
     document.getElementById('entryTitle').value = entry.title;
-    document.getElementById('entryText').value = entry.text;
+    document.getElementById('entryText').value = entry.text || '';
+    
+    // Preenche as perguntas orientadoras respondidas
+    const respostas = respostasDaEntrada(entry);
+    preencherRespostasGuia(respostas);
+    
+    // Abre a lista das perguntas quando já existem respostas
+    if (respostas.length) {
+        const lista = document.getElementById('perguntasGuiaLista');
+        const toggle = document.getElementById('perguntasGuiaToggle');
+        if (lista) lista.classList.add('aberta');
+        if (toggle) {
+            toggle.classList.add('aberta');
+            toggle.setAttribute('aria-expanded', 'true');
+        }
+    }
     
     // Seleciona emoção
     if (entry.emotion) {
@@ -377,7 +503,8 @@ function filterEntries(query) {
     }
     
     const filtered = entries.filter(entry => {
-        const searchText = `${entry.title} ${entry.text}`.toLowerCase();
+        const respostas = respostasDaEntrada(entry).map(r => `${r.pergunta} ${r.resposta}`).join(' ');
+        const searchText = `${entry.title} ${entry.text} ${respostas}`.toLowerCase();
         return searchText.includes(query.toLowerCase());
     });
     
