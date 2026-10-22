@@ -1,7 +1,4 @@
 {
-    "engines": {
-        "node": "22.x"
-    },
     "functions": {
         "api/chat.js": {
             "maxDuration": 60

@@ -4,7 +4,11 @@ Projeto desenvolvido para fins acadêmicos com foco em acessibilidade, bem-estar
 
 ## 🌐 Deploy
 
-Acesse o projeto online:
+Projeto em produção (Vercel):
+
+https://pluma-facul.vercel.app
+
+Deploy anterior do projeto:
 
 https://pluma-7xdk9q5b0-igorrmouras-projects.vercel.app
 
