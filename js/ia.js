@@ -489,6 +489,19 @@ const Ollama = {
         }
     },
 
+    // Traz o relatório do proxy da nuvem (ok, mensagem, modelos)
+    async saudeNuvem() {
+        try {
+            const res = await fetch('/api/health', { method: 'GET' });
+            if (!res.ok) {
+                return { ok: false, mensagem: `O servidor respondeu com erro ${res.status}.` };
+            }
+            return await res.json().catch(() => ({ ok: false, mensagem: 'Resposta inesperada do servidor de IA.' }));
+        } catch (e) {
+            return { ok: false, mensagem: 'Sem conexão com o servidor de IA.' };
+        }
+    },
+
     async listModels(config = IaConfig.get()) {
         if (this.isCloud(config)) {
             const res = await fetch('/api/health', { method: 'GET' });
@@ -1179,9 +1192,15 @@ const IaChat = {
         const dica = document.getElementById('aiConfigModelHint');
         if (!dica) return;
 
-        dica.textContent = provider === 'local'
-            ? 'Baixe antes com: ollama pull llama3.2'
-            : 'Na nuvem: gpt-oss:20b (recomendado), gpt-oss:120b, gemma4:31b…';
+        if (provider === 'local') {
+            dica.textContent = paginaPublicada()
+                ? 'Atenção: no site publicado o navegador bloqueia o Ollama local (CORS). '
+                    + 'Use "Nuvem" ou abra a página em http://localhost.'
+                : 'Baixe antes com: ollama pull llama3.2';
+            return;
+        }
+
+        dica.textContent = 'Na nuvem: gpt-oss:20b (recomendado), gpt-oss:120b, gemma4:31b…';
     },
 
     // Preenche a lista de modelos disponíveis na nuvem
@@ -1230,17 +1249,35 @@ const IaChat = {
         this.setStatus('testando conexão...');
 
         const online = await Ollama.isOnline(config);
+        let detalhe = '';
+
+        if (!online && Ollama.isCloud(config)) {
+            const saude = await Ollama.saudeNuvem();
+            if (saude && !saude.ok && saude.mensagem) detalhe = saude.mensagem;
+        }
+
         this.setStatus(
             online
                 ? (Ollama.isCloud(config)
                     ? `Conectado à IA em nuvem (${config.model}).`
                     : `Conectado ao Ollama em ${config.url}.`)
                 : (Ollama.isCloud(config)
-                    ? 'A IA em nuvem não está disponível agora. Tente mais tarde ou use o Ollama local nas configurações.'
-                    : `Não consegui conectar em ${config.url}. Verifique se o Ollama está rodando.`)
+                    ? (detalhe
+                        ? `IA em nuvem indisponível: ${detalhe}`
+                        : 'A IA em nuvem não está disponível agora. Tente mais tarde ou use o Ollama local nas configurações.')
+                    : (paginaPublicada()
+                        ? `O navegador bloqueou a conexão com ${config.url} (CORS). No site publicado use "Nuvem", ou rode a página em http://localhost para usar o Ollama local.`
+                        : `Não consegui conectar em ${config.url}. Verifique se o Ollama está rodando.`))
         );
     }
 };
+
+// true quando a página está servida pelo site publicado (e não em localhost)
+function paginaPublicada() {
+    const host = (window.location && window.location.hostname) || '';
+    if (!host) return false;
+    return host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost');
+}
 
 function erroConexao(e) {
     if (!e) return 'Erro inesperado ao falar com a IA.';
@@ -1256,6 +1293,12 @@ function erroConexao(e) {
 
         if (Ollama.isCloud(config)) {
             return 'Não consegui falar com o servidor de IA. Verifique sua conexão e tente de novo.';
+        }
+
+        if (paginaPublicada()) {
+            return `Não consegui conectar ao Ollama em ${config.url} a partir do site publicado `
+                + '(o navegador bloqueia por CORS). Escolha "Nuvem" nas configurações ou abra a página '
+                + 'em http://localhost para usar o Ollama local.';
         }
 
         return `Não consegui conectar ao Ollama em ${config.url}. `
