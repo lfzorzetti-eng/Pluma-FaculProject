@@ -92,14 +92,25 @@
             </small>
         </aside>
 
-        <!-- Configurações do Ollama -->
+        <!-- Configurações da IA -->
         <form class="ai-config-panel" id="aiConfigPanel">
             <div class="ai-config-title">
                 <i class="fas fa-robot"></i>
-                Conexão com o Ollama
+                Provedor de IA
             </div>
 
             <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="aiConfigProvider">Onde a IA roda</label>
+                <select class="form-input" id="aiConfigProvider">
+                    <option value="cloud">Nuvem (recomendado) — não precisa instalar nada</option>
+                    <option value="local">Local — Ollama rodando no seu computador</option>
+                </select>
+                <small style="color: var(--cinza-medio); font-size: 0.8rem;">
+                    Na nuvem, a chave da API fica no servidor do site: nada de segredo é enviado ao navegador.
+                </small>
+            </div>
+
+            <div class="form-group" id="aiConfigLocal" style="margin-bottom: 0; display: none;">
                 <label class="form-label" for="aiConfigUrl">Endereço do Ollama</label>
                 <input type="text" class="form-input" id="aiConfigUrl"
                        placeholder="http://localhost:11434">
@@ -107,10 +118,11 @@
 
             <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label" for="aiConfigModel">Modelo</label>
-                <input type="text" class="form-input" id="aiConfigModel"
-                       placeholder="llama3.2">
-                <small style="color: var(--cinza-medio); font-size: 0.8rem;">
-                    Baixe com: <code>ollama pull llama3.2</code>
+                <input type="text" class="form-input" id="aiConfigModel" list="aiModelos"
+                       placeholder="gpt-oss:20b">
+                <datalist id="aiModelos"></datalist>
+                <small id="aiConfigModelHint" style="color: var(--cinza-medio); font-size: 0.8rem;">
+                    Na nuvem: gpt-oss:20b (recomendado), gpt-oss:120b, gemma4:31b…
                 </small>
             </div>
 

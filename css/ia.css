@@ -492,6 +492,16 @@
     gap: var(--espacamento-sm);
 }
 
+.ai-config-panel select.form-input {
+    cursor: pointer;
+}
+
+.ai-config-panel .form-group small {
+    display: block;
+    margin-top: var(--espacamento-xs);
+    line-height: 1.4;
+}
+
 .ai-config-actions {
     display: flex;
     gap: var(--espacamento-sm);

@@ -1,0 +1,13 @@
+# Segredos: a chave da Ollama Cloud fica só na máquina e no servidor da Vercel
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Vercel
+.vercel
+
+# Sistema e dependências
+.DS_Store
+node_modules
+npm-debug.log

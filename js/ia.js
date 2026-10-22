@@ -1,6 +1,8 @@
 /**
  * PLUMA - Assistente de IA (Ollama)
- * Integração com Ollama rodando localmente para conversar sobre a entrada do diário
+ * A IA pode rodar na nuvem (Ollama Cloud, através do proxy do servidor em
+ * /api/chat) ou localmente (Ollama rodando na máquina da pessoa).
+ * O modo é escolhido nas configurações do chat.
  */
 
 const IA_CONFIG_KEY = 'pluma_ia_config';
@@ -17,10 +19,16 @@ function gerarIdLivre() {
 }
 
 const IA_DEFAULT_CONFIG = {
+    // 'cloud' = Ollama Cloud via proxy do servidor; 'local' = Ollama da máquina
+    provider: 'cloud',
     url: 'http://localhost:11434',
-    model: 'llama3.2',
+    model: 'gpt-oss:20b',
     temperature: 0.7
 };
+
+// Modelos que só existem no Ollama local: ao migrar para a nuvem, o modelo
+// salvo precisa voltar para o padrão (que existe no Ollama Cloud).
+const IA_MODELOS_SOMENTE_LOCAL = ['llama3.2'];
 
 // Quantas mensagens do histórico vão para o modelo (o histórico completo fica salvo)
 const IA_MAX_CONTEXT_MESSAGES = 12;
@@ -101,9 +109,17 @@ Se a pessoa falar em se machucar, não querer viver, se matar, acabar com tudo o
 const IaConfig = {
     get() {
         const saved = getFromStorage(IA_CONFIG_KEY, {});
+        const provider = saved.provider === 'local' ? 'local' : 'cloud';
+
+        let model = saved.model || IA_DEFAULT_CONFIG.model;
+        if (provider === 'cloud' && IA_MODELOS_SOMENTE_LOCAL.includes(model)) {
+            model = IA_DEFAULT_CONFIG.model;
+        }
+
         return {
+            provider,
             url: normalizarUrl(saved.url || IA_DEFAULT_CONFIG.url),
-            model: saved.model || IA_DEFAULT_CONFIG.model,
+            model,
             temperature: typeof saved.temperature === 'number'
                 ? saved.temperature
                 : IA_DEFAULT_CONFIG.temperature
@@ -113,6 +129,7 @@ const IaConfig = {
     set(config) {
         const current = this.get();
         const next = {
+            provider: config.provider === 'local' ? 'local' : (config.provider ?? current.provider),
             url: normalizarUrl(config.url ?? current.url),
             model: (config.model ?? current.model).trim(),
             temperature: typeof config.temperature === 'number'
@@ -445,12 +462,26 @@ function montarContextoHumor(limite = 15, maxChars = 200) {
 }
 
 // ============================================
-// CLIENTE OLLAMA
+// CLIENTE DE IA (Ollama Cloud via proxy / Ollama local)
 // ============================================
 
 const Ollama = {
+    // Na nuvem o app fala com o proxy do próprio servidor (/api/chat), que
+    // guarda a chave da Ollama Cloud. No modo local, fala direto com o
+    // Ollama da máquina da pessoa.
+    isCloud(config = IaConfig.get()) {
+        return config.provider !== 'local';
+    },
+
     async isOnline(config = IaConfig.get()) {
         try {
+            if (this.isCloud(config)) {
+                const res = await fetch('/api/health', { method: 'GET' });
+                if (!res.ok) return false;
+                const data = await res.json().catch(() => ({}));
+                return data.ok === true;
+            }
+
             const res = await fetch(`${config.url}/api/tags`, { method: 'GET' });
             return res.ok;
         } catch (e) {
@@ -459,6 +490,14 @@ const Ollama = {
     },
 
     async listModels(config = IaConfig.get()) {
+        if (this.isCloud(config)) {
+            const res = await fetch('/api/health', { method: 'GET' });
+            if (!res.ok) throw new Error(`O servidor respondeu com erro ${res.status}`);
+
+            const data = await res.json();
+            return data.modelosCloud || data.modelosPermitidos || [];
+        }
+
         const res = await fetch(`${config.url}/api/tags`, { method: 'GET' });
         if (!res.ok) throw new Error(`Ollama respondeu com erro ${res.status}`);
 
@@ -467,11 +506,13 @@ const Ollama = {
     },
 
     /**
-     * Envia as mensagens para o Ollama e devolve a resposta completa.
+     * Envia as mensagens para a IA e devolve a resposta completa.
      * Usa streaming NDJSON quando disponível, senão cai para resposta única.
      */
     async chat(messages, { config = IaConfig.get(), onToken, signal } = {}) {
-        const res = await fetch(`${config.url}/api/chat`, {
+        const url = this.isCloud(config) ? '/api/chat' : `${config.url}/api/chat`;
+
+        const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal,
@@ -485,11 +526,7 @@ const Ollama = {
 
         if (!res.ok) {
             const detalhes = await res.text().catch(() => '');
-            throw new Error(
-                res.status === 404
-                    ? `Modelo "${config.model}" não encontrado no Ollama. Rode: ollama pull ${config.model}`
-                    : `Ollama respondeu com erro ${res.status}. ${detalhes.slice(0, 120)}`
-            );
+            throw new Error(this.mensagemDeErro(res.status, detalhes, config));
         }
 
         if (!res.body || typeof res.body.getReader !== 'function') {
@@ -531,6 +568,30 @@ const Ollama = {
         }
 
         return full;
+    },
+
+    /**
+     * Traduz a resposta de erro (do proxy ou do Ollama local) em uma frase
+     * que a pessoa entende.
+     */
+    mensagemDeErro(status, detalhes, config = IaConfig.get()) {
+        let mensagem = '';
+        try {
+            const data = JSON.parse(detalhes);
+            mensagem = (data && data.error) || '';
+        } catch (e) {
+            // resposta não é JSON (ex.: erro do Ollama local)
+        }
+
+        if (mensagem) return mensagem;
+
+        if (this.isCloud(config)) {
+            return `O servidor de IA respondeu com erro ${status}.`;
+        }
+
+        return status === 404
+            ? `Modelo "${config.model}" não encontrado no Ollama. Rode: ollama pull ${config.model}`
+            : `Ollama respondeu com erro ${status}. ${detalhes.slice(0, 120)}`;
     }
 };
 
@@ -612,6 +673,13 @@ const IaChat = {
 
         document.getElementById('aiCancelConfigBtn').addEventListener('click', () => {
             this.toggleConfigPanel(false);
+        });
+
+        document.getElementById('aiConfigProvider')?.addEventListener('change', e => {
+            const local = e.target.value === 'local';
+            this.mostrarBlocoLocal(local);
+            this.atualizarDicaModelo(local ? 'local' : 'cloud');
+            if (!local) this.carregarModelosCloud();
         });
 
         this.inited = true;
@@ -1081,31 +1149,95 @@ const IaChat = {
         const panel = document.getElementById('aiConfigPanel');
         const config = IaConfig.get();
 
-        document.getElementById('aiConfigUrl').value = config.url;
-        document.getElementById('aiConfigModel').value = config.model;
+        const seletor = document.getElementById('aiConfigProvider');
+        if (seletor) seletor.value = config.provider;
+
+        const campoUrl = document.getElementById('aiConfigUrl');
+        if (campoUrl) campoUrl.value = config.url;
+
+        const campoModel = document.getElementById('aiConfigModel');
+        if (campoModel) campoModel.value = config.model;
+
+        const local = config.provider === 'local';
+        this.mostrarBlocoLocal(local);
+        this.atualizarDicaModelo(config.provider);
 
         const abrir = force !== undefined ? force : !panel.classList.contains('visible');
         panel.classList.toggle('visible', abrir);
+
+        if (abrir && !local) this.carregarModelosCloud();
+    },
+
+    // Mostra ou esconde o campo de endereço do Ollama local
+    mostrarBlocoLocal(mostrar) {
+        const bloco = document.getElementById('aiConfigLocal');
+        if (bloco) bloco.style.display = mostrar ? 'block' : 'none';
+    },
+
+    // Texto de ajuda do campo de modelo, conforme o provedor escolhido
+    atualizarDicaModelo(provider) {
+        const dica = document.getElementById('aiConfigModelHint');
+        if (!dica) return;
+
+        dica.textContent = provider === 'local'
+            ? 'Baixe antes com: ollama pull llama3.2'
+            : 'Na nuvem: gpt-oss:20b (recomendado), gpt-oss:120b, gemma4:31b…';
+    },
+
+    // Preenche a lista de modelos disponíveis na nuvem
+    async carregarModelosCloud() {
+        const lista = document.getElementById('aiModelos');
+        if (!lista || lista.dataset.carregado === '1') return;
+
+        try {
+            // O provedor da lista é a nuvem, mesmo que a pessoa ainda não tenha
+            // salvo a escolha no seletor
+            const modelos = await Ollama.listModels({ provider: 'cloud' });
+            if (!modelos || !modelos.length) return;
+
+            lista.innerHTML = '';
+            modelos.forEach(nome => {
+                const opcao = document.createElement('option');
+                opcao.value = nome;
+                lista.appendChild(opcao);
+            });
+
+            lista.dataset.carregado = '1';
+        } catch (e) {
+            // A lista é um convenience: se falhar, a pessoa ainda digita o modelo
+        }
     },
 
     async salvarConfig() {
-        const url = document.getElementById('aiConfigUrl').value.trim();
-        const model = document.getElementById('aiConfigModel').value.trim();
+        const seletor = document.getElementById('aiConfigProvider');
+        const provider = seletor && seletor.value === 'local' ? 'local' : 'cloud';
 
-        if (!url) {
+        const url = document.getElementById('aiConfigUrl')?.value.trim() || '';
+        const model = document.getElementById('aiConfigModel')?.value.trim() || '';
+
+        if (provider === 'local' && !url) {
             alert('Informe o endereço do Ollama.');
             return;
         }
 
-        const config = IaConfig.set({ url, model });
+        if (!model) {
+            alert('Informe o modelo da IA.');
+            return;
+        }
+
+        const config = IaConfig.set({ provider, url, model });
         this.toggleConfigPanel(false);
         this.setStatus('testando conexão...');
 
         const online = await Ollama.isOnline(config);
         this.setStatus(
             online
-                ? `Conectado ao Ollama em ${config.url}`
-                : `Não consegui conectar em ${config.url}. Verifique se o Ollama está rodando.`
+                ? (Ollama.isCloud(config)
+                    ? `Conectado à IA em nuvem (${config.model}).`
+                    : `Conectado ao Ollama em ${config.url}.`)
+                : (Ollama.isCloud(config)
+                    ? 'A IA em nuvem não está disponível agora. Tente mais tarde ou use o Ollama local nas configurações.'
+                    : `Não consegui conectar em ${config.url}. Verifique se o Ollama está rodando.`)
         );
     }
 };
@@ -1120,7 +1252,13 @@ function erroConexao(e) {
         || /failed to fetch|fetch failed|networkerror|load failed/i.test(mensagem);
 
     if (falhaRede) {
-        return `Não consegui conectar ao Ollama em ${IaConfig.get().url}. `
+        const config = IaConfig.get();
+
+        if (Ollama.isCloud(config)) {
+            return 'Não consegui falar com o servidor de IA. Verifique sua conexão e tente de novo.';
+        }
+
+        return `Não consegui conectar ao Ollama em ${config.url}. `
             + 'Abra o aplicativo Ollama e verifique o endereço nas configurações.';
     }
 
